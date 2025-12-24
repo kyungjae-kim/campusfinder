@@ -1,0 +1,29 @@
+# Node modules (호스트 것 절대 복사 안 함)
+node_modules
+
+# 빌드 결과물 (컨테이너에서 다시 생성)
+dist
+build
+
+# VCS
+.git
+.gitignore
+
+# Docker 관련
+Dockerfile
+docker-compose.yml
+
+# 환경 변수 파일
+.env
+.env.local
+.env.development
+.env.production
+
+# 로그
+npm-debug.log
+yarn-error.log
+
+# IDE / OS
+.vscode
+.idea
+.DS_Store

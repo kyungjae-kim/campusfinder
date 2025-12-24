@@ -1,0 +1,208 @@
+#우리가 만든 MSA 서비스들을 컨테이너로 등록한다.
+services:
+
+  #Mysql DB
+  mysql:
+    image: mysql:8
+    container_name: msa-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: 1234
+      MYSQL_DATABASE: studydb
+    ports:
+      - "3307:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - msa-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p1234"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  #auth-service 등록
+  auth-service:
+    build: ./auth-service
+    container_name: auth-service
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:mysql://msa-mysql:3306/studydb?serverTimezone=UTC&characterEncoding=UTF-8
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 1234
+    networks:
+      - msa-net
+    restart: unless-stopped
+
+  #user-service 등록
+  user-service:
+    build: ./user-service
+    container_name: user-service
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:mysql://msa-mysql:3306/studydb?serverTimezone=UTC&characterEncoding=UTF-8
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 1234
+    networks:
+      - msa-net
+    restart: unless-stopped
+
+  #lost-service 등록
+  lost-service:
+    build: ./lost-service
+    container_name: lost-service
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:mysql://msa-mysql:3306/studydb?serverTimezone=UTC&characterEncoding=UTF-8
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 1234
+    networks:
+      - msa-net
+    restart: unless-stopped
+
+  #found-service 등록
+  found-service:
+    build: ./found-service
+    container_name: found-service
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:mysql://msa-mysql:3306/studydb?serverTimezone=UTC&characterEncoding=UTF-8
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 1234
+    networks:
+      - msa-net
+    restart: unless-stopped
+
+  #matching-service 등록
+  matching-service:
+    build: ./matching-service
+    container_name: matching-service
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:mysql://msa-mysql:3306/studydb?serverTimezone=UTC&characterEncoding=UTF-8
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 1234
+    networks:
+      - msa-net
+    restart: unless-stopped
+
+  #handover-service 등록
+  handover-service:
+    build: ./handover-service
+    container_name: handover-service
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:mysql://msa-mysql:3306/studydb?serverTimezone=UTC&characterEncoding=UTF-8
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 1234
+    networks:
+      - msa-net
+    restart: unless-stopped
+
+  #message-service 등록
+  message-service:
+    build: ./message-service
+    container_name: message-service
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:mysql://msa-mysql:3306/studydb?serverTimezone=UTC&characterEncoding=UTF-8
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 1234
+    networks:
+      - msa-net
+    restart: unless-stopped
+
+  #notification-service 등록
+  notification-service:
+    build: ./notification-service
+    container_name: notification-service
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:mysql://msa-mysql:3306/studydb?serverTimezone=UTC&characterEncoding=UTF-8
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 1234
+    networks:
+      - msa-net
+    restart: unless-stopped
+
+  #admin-service 등록
+  admin-service:
+    build: ./admin-service
+    container_name: admin-service
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:mysql://msa-mysql:3306/studydb?serverTimezone=UTC&characterEncoding=UTF-8
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 1234
+    networks:
+      - msa-net
+    restart: unless-stopped
+
+  #api gateway 등록
+  api-gateway:
+    build: ./api-gateway
+    container_name: api-gateway
+    depends_on:
+      - auth-service
+      - user-service
+      - lost-service
+      - found-service
+      - matching-service
+      - handover-service
+      - message-service
+      - notification-service
+      - admin-service
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+    ports:
+      - "8080:8080"
+    networks:
+      - msa-net
+    restart: unless-stopped
+
+  #frontend 등록
+  frontend:
+    build: ./frontend
+    container_name: msa-frontend
+    depends_on:
+      - api-gateway
+    ports:
+      - "3000:80"
+    networks:
+      - msa-net
+    restart: unless-stopped
+
+volumes:
+  db_data:
+
+networks:
+  msa-net:
+    driver: bridge
