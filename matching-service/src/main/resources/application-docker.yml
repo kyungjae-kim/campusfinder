@@ -7,3 +7,10 @@ spring:
 
 server:
   port: 8085
+
+# Docker 환경에서의 서비스 URL
+services:
+  lost-service:
+    url: http://lost-service:8083
+  found-service:
+    url: http://found-service:8084

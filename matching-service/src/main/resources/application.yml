@@ -12,5 +12,13 @@ spring:
       hibernate:
         format_sql: true
     show-sql: true
+
 server:
   port: 8085
+
+# 다른 서비스 URL 설정
+services:
+  lost-service:
+    url: http://localhost:8083
+  found-service:
+    url: http://localhost:8084

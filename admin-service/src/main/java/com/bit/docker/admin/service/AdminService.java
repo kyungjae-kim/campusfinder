@@ -41,7 +41,7 @@ public class AdminService {
             throw new IllegalArgumentException("이미 신고한 항목입니다.");
         });
 
-        // TODO: 대상이 실제로 존재하는지 확인 (선택적)
+        // 대상이 실제로 존재하는지 확인 (선택적 - 현재는 생략)
 
         Report report = new Report();
         report.setTargetType(request.getTargetType());

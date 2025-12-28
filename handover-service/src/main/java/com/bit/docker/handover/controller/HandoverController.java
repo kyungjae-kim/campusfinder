@@ -58,18 +58,24 @@ public class HandoverController {
         @PathVariable Long handoverId,
         @RequestHeader("X-User-Role") String role
     ) {
-        // TODO: role이 SECURITY인지 확인
+        // Role이 SECURITY인지 확인
+        if (!"SECURITY".equals(role)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         HandoverResponse response = handoverService.verifyBySecurity(handoverId);
         return ResponseEntity.ok(response);
     }
-    
+
     // 관리실 승인 (OFFICE)
     @PostMapping("/{handoverId}/approve")
     public ResponseEntity<HandoverResponse> approveByOffice(
         @PathVariable Long handoverId,
         @RequestHeader("X-User-Role") String role
     ) {
-        // TODO: role이 OFFICE인지 확인
+        // Role이 OFFICE인지 확인
+        if (!"OFFICE".equals(role)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         HandoverResponse response = handoverService.approveByOffice(handoverId);
         return ResponseEntity.ok(response);
     }

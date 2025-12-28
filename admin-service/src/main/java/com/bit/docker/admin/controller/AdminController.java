@@ -42,22 +42,28 @@ public class AdminController {
         Pageable pageable,
         @RequestHeader("X-User-Role") String role
     ) {
-        // TODO: role이 ADMIN인지 확인
+        // Role이 ADMIN인지 확인
+        if (!"ADMIN".equals(role)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         Page<ReportResponse> response = adminService.getReports(status, pageable);
         return ResponseEntity.ok(response);
     }
-    
+
     // 신고 상세 조회 (관리자)
     @GetMapping("/reports/{reportId}")
     public ResponseEntity<ReportResponse> getReport(
         @PathVariable Long reportId,
         @RequestHeader("X-User-Role") String role
     ) {
-        // TODO: role이 ADMIN인지 확인
+        // Role이 ADMIN인지 확인
+        if (!"ADMIN".equals(role)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         ReportResponse response = adminService.getReport(reportId);
         return ResponseEntity.ok(response);
     }
-    
+
     // 신고 처리 (관리자)
     @PutMapping("/reports/{reportId}/resolve")
     public ResponseEntity<ReportResponse> resolveReport(
@@ -66,7 +72,10 @@ public class AdminController {
         @RequestHeader("X-User-Role") String role,
         @RequestBody ReportResolveRequest request
     ) {
-        // TODO: role이 ADMIN인지 확인
+        // Role이 ADMIN인지 확인
+        if (!"ADMIN".equals(role)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         ReportResponse response = adminService.resolveReport(reportId, adminId, request);
         return ResponseEntity.ok(response);
     }
@@ -80,7 +89,10 @@ public class AdminController {
         @PathVariable Long targetId,
         @RequestHeader("X-User-Role") String role
     ) {
-        // TODO: role이 ADMIN, OFFICE, SECURITY인지 확인
+        // Role이 ADMIN, OFFICE, SECURITY인지 확인
+        if (!"ADMIN".equals(role) && !"OFFICE".equals(role) && !"SECURITY".equals(role)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         adminService.blindItem(targetType, targetId);
         return ResponseEntity.ok().build();
     }
@@ -92,7 +104,10 @@ public class AdminController {
         @PathVariable Long targetId,
         @RequestHeader("X-User-Role") String role
     ) {
-        // TODO: role이 ADMIN인지 확인
+        // Role이 ADMIN인지 확인
+        if (!"ADMIN".equals(role)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         adminService.unblindItem(targetType, targetId);
         return ResponseEntity.ok().build();
     }
@@ -105,7 +120,10 @@ public class AdminController {
         @PathVariable Long userId,
         @RequestHeader("X-User-Role") String role
     ) {
-        // TODO: role이 ADMIN인지 확인
+        // Role이 ADMIN인지 확인
+        if (!"ADMIN".equals(role)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         adminService.blockUser(userId);
         return ResponseEntity.ok().build();
     }
@@ -116,7 +134,10 @@ public class AdminController {
         @PathVariable Long userId,
         @RequestHeader("X-User-Role") String role
     ) {
-        // TODO: role이 ADMIN인지 확인
+        // Role이 ADMIN인지 확인
+        if (!"ADMIN".equals(role)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         adminService.unblockUser(userId);
         return ResponseEntity.ok().build();
     }
@@ -134,7 +155,10 @@ public class AdminController {
         LocalDateTime endDate,
         @RequestHeader("X-User-Role") String role
     ) {
-        // TODO: role이 ADMIN인지 확인
+        // Role이 ADMIN인지 확인
+        if (!"ADMIN".equals(role)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         StatisticsResponse response = adminService.getStatistics(startDate, endDate);
         return ResponseEntity.ok(response);
     }

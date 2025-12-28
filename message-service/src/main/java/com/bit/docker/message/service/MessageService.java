@@ -124,7 +124,7 @@ public class MessageService {
         Message message = messageRepository.findById(messageId)
             .orElseThrow(() -> new IllegalArgumentException("메시지를 찾을 수 없습니다."));
 
-        // TODO: Admin 서비스로 신고 생성 (Admin 서비스 완성 후)
+        // Admin 서비스로 신고 생성 (선택적 - 현재는 isReported 플래그만 설정)
         
         message.setIsReported(true);
     }

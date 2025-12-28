@@ -1,13 +1,18 @@
 package com.bit.docker.matching.service;
 
+import com.bit.docker.matching.config.ServiceUrlProperties;
 import com.bit.docker.matching.dto.FoundItemDTO;
 import com.bit.docker.matching.dto.LostItemDTO;
 import com.bit.docker.matching.dto.response.MatchingResponse;
 import com.bit.docker.matching.model.Matching;
 import com.bit.docker.matching.repository.MatchingRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -18,7 +23,8 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class MatchingService {
     private final MatchingRepository matchingRepository;
-    // TODO: RestTemplate 또는 FeignClient로 Lost, Found 서비스 호출
+    private final RestTemplate restTemplate;
+    private final ServiceUrlProperties serviceUrlProperties;
     
     /**
      * 분실 신고에 대한 매칭 후보 계산
@@ -30,10 +36,10 @@ public class MatchingService {
      */
     @Transactional
     public List<MatchingResponse> findMatchingCandidatesForLost(Long lostId, int topN) {
-        // TODO: Lost 서비스에서 분실 신고 조회
+        // Lost 서비스에서 분실 신고 조회
         LostItemDTO lostItem = getLostItemById(lostId);
-        
-        // TODO: Found 서비스에서 모든 습득물 조회 (상태가 REGISTERED 또는 STORED인 것만)
+
+        // Found 서비스에서 모든 습득물 조회 (상태가 REGISTERED 또는 STORED인 것만)
         List<FoundItemDTO> foundItems = getAllAvailableFoundItems();
         
         // 각 습득물에 대해 점수 계산
@@ -68,10 +74,10 @@ public class MatchingService {
      */
     @Transactional
     public List<MatchingResponse> findMatchingCandidatesForFound(Long foundId, int topN) {
-        // TODO: Found 서비스에서 습득물 조회
+        // Found 서비스에서 습득물 조회
         FoundItemDTO foundItem = getFoundItemById(foundId);
         
-        // TODO: Lost 서비스에서 모든 분실 신고 조회 (상태가 OPEN인 것만)
+        // Lost 서비스에서 모든 분실 신고 조회 (상태가 OPEN인 것만)
         List<LostItemDTO> lostItems = getAllOpenLostItems();
         
         // 각 분실 신고에 대해 점수 계산
@@ -262,39 +268,153 @@ public class MatchingService {
         }
     }
     
-    // TODO: RestTemplate으로 Lost 서비스 호출
+    // Lost 서비스에서 분실 신고 조회
     private LostItemDTO getLostItemById(Long lostId) {
-        // 임시 더미 데이터
-        LostItemDTO item = new LostItemDTO();
-        item.setId(lostId);
-        item.setCategory("ELECTRONICS");
-        item.setTitle("아이폰 분실");
-        item.setDescription("검은색 아이폰 15 Pro");
-        item.setLostPlace("공학관 2층");
-        return item;
+        try {
+            String url = serviceUrlProperties.getLostService().getUrl() + "/api/lost/" + lostId;
+            ResponseEntity<LostItemDTO> response = restTemplate.getForEntity(url, LostItemDTO.class);
+            return response.getBody();
+        } catch (Exception e) {
+            throw new RuntimeException("Lost 서비스 호출 실패: " + e.getMessage(), e);
+        }
     }
-    
-    // TODO: RestTemplate으로 Found 서비스 호출
+
+    // Found 서비스에서 습득물 조회
     private FoundItemDTO getFoundItemById(Long foundId) {
-        // 임시 더미 데이터
-        FoundItemDTO item = new FoundItemDTO();
-        item.setId(foundId);
-        item.setCategory("ELECTRONICS");
-        item.setTitle("아이폰 습득");
-        item.setDescription("검은색 스마트폰");
-        item.setFoundPlace("공학관 3층");
-        return item;
+        try {
+            String url = serviceUrlProperties.getFoundService().getUrl() + "/api/found/" + foundId;
+            ResponseEntity<FoundItemDTO> response = restTemplate.getForEntity(url, FoundItemDTO.class);
+            return response.getBody();
+        } catch (Exception e) {
+            throw new RuntimeException("Found 서비스 호출 실패: " + e.getMessage(), e);
+        }
     }
-    
-    // TODO: RestTemplate으로 Found 서비스 호출
+
+    // Found 서비스에서 사용 가능한 습득물 조회 (REGISTERED, STORED 상태)
     private List<FoundItemDTO> getAllAvailableFoundItems() {
-        // 임시 더미 데이터
-        return new ArrayList<>();
+        try {
+            String url = serviceUrlProperties.getFoundService().getUrl() + "/api/found?size=1000";
+
+            // Page<FoundItemDTO> 형태로 받아오기
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                url,
+                HttpMethod.GET,
+                null,
+                new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
+
+            Map<String, Object> body = response.getBody();
+            if (body != null && body.containsKey("content")) {
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> content = (List<Map<String, Object>>) body.get("content");
+
+                return content.stream()
+                    .map(this::mapToFoundItemDTO)
+                    .filter(item -> "REGISTERED".equals(item.getStatus()) || "STORED".equals(item.getStatus()))
+                    .collect(Collectors.toList());
+            }
+
+            return new ArrayList<>();
+        } catch (Exception e) {
+            System.err.println("Found 서비스 호출 실패: " + e.getMessage());
+            return new ArrayList<>();
+        }
+    }
+
+    // Lost 서비스에서 OPEN 상태인 분실 신고 조회
+    private List<LostItemDTO> getAllOpenLostItems() {
+        try {
+            String url = serviceUrlProperties.getLostService().getUrl() + "/api/lost?size=1000";
+
+            // Page<LostItemDTO> 형태로 받아오기
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                url,
+                HttpMethod.GET,
+                null,
+                new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
+
+            Map<String, Object> body = response.getBody();
+            if (body != null && body.containsKey("content")) {
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> content = (List<Map<String, Object>>) body.get("content");
+
+                return content.stream()
+                    .map(this::mapToLostItemDTO)
+                    .filter(item -> "OPEN".equals(item.getStatus()))
+                    .collect(Collectors.toList());
+            }
+
+            return new ArrayList<>();
+        } catch (Exception e) {
+            System.err.println("Lost 서비스 호출 실패: " + e.getMessage());
+            return new ArrayList<>();
+        }
+    }
+
+    // Map을 FoundItemDTO로 변환
+    private FoundItemDTO mapToFoundItemDTO(Map<String, Object> map) {
+        FoundItemDTO dto = new FoundItemDTO();
+        dto.setId(((Number) map.get("id")).longValue());
+        dto.setCategory((String) map.get("category"));
+        dto.setTitle((String) map.get("title"));
+        dto.setDescription((String) map.get("description"));
+        dto.setFoundPlace((String) map.get("foundPlace"));
+        dto.setStatus((String) map.get("status"));
+        
+        // foundAt 날짜 변환
+        if (map.get("foundAt") != null) {
+            dto.setFoundAt(parseDateTime(map.get("foundAt")));
+        }
+        return dto;
+    }
+
+    // Map을 LostItemDTO로 변환
+    private LostItemDTO mapToLostItemDTO(Map<String, Object> map) {
+        LostItemDTO dto = new LostItemDTO();
+        dto.setId(((Number) map.get("id")).longValue());
+        dto.setCategory((String) map.get("category"));
+        dto.setTitle((String) map.get("title"));
+        dto.setDescription((String) map.get("description"));
+        dto.setLostPlace((String) map.get("lostPlace"));
+        dto.setStatus((String) map.get("status"));
+        
+        // lostAt 날짜 변환
+        if (map.get("lostAt") != null) {
+            dto.setLostAt(parseDateTime(map.get("lostAt")));
+        }
+        return dto;
     }
     
-    // TODO: RestTemplate으로 Lost 서비스 호출
-    private List<LostItemDTO> getAllOpenLostItems() {
-        // 임시 더미 데이터
-        return new ArrayList<>();
+    // 날짜/시간 문자열을 LocalDateTime으로 변환
+    private java.time.LocalDateTime parseDateTime(Object dateObj) {
+        if (dateObj == null) {
+            return null;
+        }
+        
+        if (dateObj instanceof String) {
+            try {
+                return java.time.LocalDateTime.parse((String) dateObj);
+            } catch (Exception e) {
+                // ISO 형식이 아닐 경우 현재 시간으로 대체
+                return java.time.LocalDateTime.now();
+            }
+        } else if (dateObj instanceof List) {
+            // [2024, 1, 15, 10, 30, 45] 형태
+            @SuppressWarnings("unchecked")
+            List<Integer> dateArray = (List<Integer>) dateObj;
+            if (dateArray.size() >= 3) {
+                return java.time.LocalDateTime.of(
+                    dateArray.get(0), // year
+                    dateArray.get(1), // month
+                    dateArray.get(2), // day
+                    dateArray.size() > 3 ? dateArray.get(3) : 0, // hour
+                    dateArray.size() > 4 ? dateArray.get(4) : 0, // minute
+                    dateArray.size() > 5 ? dateArray.get(5) : 0  // second
+                );
+            }
+        }
+        
+        return java.time.LocalDateTime.now();
     }
 }

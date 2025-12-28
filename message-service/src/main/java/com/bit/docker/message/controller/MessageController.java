@@ -82,7 +82,10 @@ public class MessageController {
         @PathVariable Long messageId,
         @RequestHeader("X-User-Role") String role
     ) {
-        // TODO: role이 ADMIN인지 확인
+        // Role이 ADMIN인지 확인
+        if (!"ADMIN".equals(role)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         messageService.blindMessage(messageId);
         return ResponseEntity.ok().build();
     }

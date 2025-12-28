@@ -1,5 +1,8 @@
 package com.bit.docker.handover.service;
 
+import com.bit.docker.handover.config.ServiceUrlProperties;
+import com.bit.docker.handover.dto.FoundItemDTO;
+import com.bit.docker.handover.dto.NotificationCreateRequest;
 import com.bit.docker.handover.dto.request.HandoverCreateRequest;
 import com.bit.docker.handover.dto.response.HandoverResponse;
 import com.bit.docker.handover.model.Handover;
@@ -10,9 +13,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -20,7 +26,11 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class HandoverService {
     private final HandoverRepository handoverRepository;
-    // TODO: RestTemplate 또는 FeignClient로 Lost, Found 서비스 호출
+    private final RestTemplate restTemplate;
+    private final ServiceUrlProperties serviceUrlProperties;
+
+    // 보안 검수가 필요한 카테고리
+    private static final List<String> SECURITY_CHECK_CATEGORIES = List.of("ELECTRONICS", "WALLET", "ID_CARD");
     
     // 인계 요청 생성 (E1. 분실자가 후보 습득물에 대해 인계 요청)
     @Transactional
@@ -31,14 +41,25 @@ public class HandoverService {
                 throw new IllegalArgumentException("이미 인계 요청이 존재합니다.");
             });
         
-        // TODO: Lost, Found 서비스에서 실제 존재 여부 확인
-        // TODO: Found 서비스에서 responderId(습득자) 조회
+        // Found 서비스에서 습득물 정보 조회 (존재 여부 및 responderId)
+        FoundItemDTO foundItem = getFoundItemById(request.getFoundId());
+        if (foundItem == null) {
+            throw new IllegalArgumentException("습득물을 찾을 수 없습니다.");
+        }
+        
+        // Lost 서비스에서 분실 신고 존재 여부 확인
+        try {
+            String lostUrl = serviceUrlProperties.getLostService().getUrl() + "/api/lost/" + request.getLostId();
+            restTemplate.getForEntity(lostUrl, Object.class);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("분실 신고를 찾을 수 없습니다.");
+        }
         
         Handover handover = new Handover();
         handover.setLostId(request.getLostId());
         handover.setFoundId(request.getFoundId());
         handover.setRequesterId(requesterId);
-        // handover.setResponderId(responderId); // TODO: Found 서비스에서 조회
+        handover.setResponderId(foundItem.getOwnerUserId()); // Found 서비스에서 조회한 습득자 ID
         handover.setMethod(request.getMethod());
         handover.setScheduleAt(request.getScheduleAt());
         handover.setMeetPlace(request.getMeetPlace());
@@ -47,7 +68,14 @@ public class HandoverService {
         
         Handover saved = handoverRepository.save(handover);
         
-        // TODO: Notification 서비스로 알림 전송 (습득자에게)
+        // Notification 서비스로 알림 전송 (습득자에게)
+        sendNotification(
+            foundItem.getOwnerUserId(),
+            "HANDOVER_REQUESTED",
+            "새로운 인계 요청",
+            "분실 신고 #" + request.getLostId() + "에 대한 인계 요청이 도착했습니다.",
+            saved.getId()
+        );
         
         return HandoverResponse.from(saved);
     }
@@ -71,7 +99,14 @@ public class HandoverService {
         handover.setStatus(HandoverStatus.ACCEPTED_BY_FINDER);
         handover.setAcceptedByFinderAt(LocalDateTime.now());
         
-        // TODO: Notification 서비스로 알림 전송 (분실자에게)
+        // Notification 서비스로 알림 전송 (분실자에게)
+        sendNotification(
+            handover.getRequesterId(),
+            "HANDOVER_ACCEPTED",
+            "인계 요청 승인됨",
+            "인계 요청 #" + handoverId + "이 승인되었습니다.",
+            handoverId
+        );
         
         return HandoverResponse.from(handover);
     }
@@ -96,7 +131,14 @@ public class HandoverService {
         handover.setCanceledAt(LocalDateTime.now());
         handover.setCancelReason(reason);
         
-        // TODO: Notification 서비스로 알림 전송 (분실자에게)
+        // Notification 서비스로 알림 전송 (분실자에게)
+        sendNotification(
+            handover.getRequesterId(),
+            "HANDOVER_REJECTED",
+            "인계 요청 거절됨",
+            "인계 요청 #" + handoverId + "이 거절되었습니다. 사유: " + reason,
+            handoverId
+        );
         
         return HandoverResponse.from(handover);
     }
@@ -112,12 +154,30 @@ public class HandoverService {
             throw new IllegalArgumentException("검수할 수 없는 상태입니다.");
         }
         
-        // TODO: Found 서비스에서 category 조회하여 검수 필요 여부 확인
+        // Found 서비스에서 category 조회하여 검수 필요 여부 확인
+        FoundItemDTO foundItem = getFoundItemById(handover.getFoundId());
+        if (foundItem != null && !SECURITY_CHECK_CATEGORIES.contains(foundItem.getCategory())) {
+            throw new IllegalArgumentException("이 카테고리는 보안 검수가 필요하지 않습니다.");
+        }
         
         handover.setStatus(HandoverStatus.VERIFIED_BY_SECURITY);
         handover.setVerifiedBySecurityAt(LocalDateTime.now());
         
-        // TODO: Notification 서비스로 알림 전송
+        // Notification 서비스로 알림 전송
+        sendNotification(
+            handover.getRequesterId(),
+            "HANDOVER_VERIFIED",
+            "보안 검수 완료",
+            "인계 요청 #" + handoverId + "의 보안 검수가 완료되었습니다.",
+            handoverId
+        );
+        sendNotification(
+            handover.getResponderId(),
+            "HANDOVER_VERIFIED",
+            "보안 검수 완료",
+            "인계 요청 #" + handoverId + "의 보안 검수가 완료되었습니다.",
+            handoverId
+        );
         
         return HandoverResponse.from(handover);
     }
@@ -140,7 +200,21 @@ public class HandoverService {
         // 📌 연락처 공개 (2-1. 권한 규칙)
         handover.setContactDisclosed(true);
         
-        // TODO: Notification 서비스로 알림 전송
+        // Notification 서비스로 알림 전송
+        sendNotification(
+            handover.getRequesterId(),
+            "HANDOVER_APPROVED",
+            "관리실 승인 완료",
+            "인계 요청 #" + handoverId + "이 최종 승인되었습니다. 연락처가 공개되었습니다.",
+            handoverId
+        );
+        sendNotification(
+            handover.getResponderId(),
+            "HANDOVER_APPROVED",
+            "관리실 승인 완료",
+            "인계 요청 #" + handoverId + "이 최종 승인되었습니다. 연락처가 공개되었습니다.",
+            handoverId
+        );
         
         return HandoverResponse.from(handover);
     }
@@ -160,7 +234,21 @@ public class HandoverService {
         handover.setMeetPlace(meetPlace);
         handover.setStatus(HandoverStatus.SCHEDULED);
         
-        // TODO: Notification 서비스로 알림 전송
+        // Notification 서비스로 알림 전송
+        sendNotification(
+            handover.getRequesterId(),
+            "HANDOVER_SCHEDULED",
+            "인계 일정 확정",
+            "인계 일정이 확정되었습니다. " + scheduleAt + " / " + meetPlace,
+            handoverId
+        );
+        sendNotification(
+            handover.getResponderId(),
+            "HANDOVER_SCHEDULED",
+            "인계 일정 확정",
+            "인계 일정이 확정되었습니다. " + scheduleAt + " / " + meetPlace,
+            handoverId
+        );
         
         return HandoverResponse.from(handover);
     }
@@ -179,9 +267,27 @@ public class HandoverService {
         handover.setStatus(HandoverStatus.COMPLETED);
         handover.setCompletedAt(LocalDateTime.now());
         
-        // TODO: Lost 서비스 호출 - status를 CLOSED로 변경
-        // TODO: Found 서비스 호출 - status를 HANDED_OVER로 변경
-        // TODO: Notification 서비스로 알림 전송
+        // Lost 서비스 호출 - status를 CLOSED로 변경
+        updateLostItemStatus(handover.getLostId(), "CLOSED");
+        
+        // Found 서비스 호출 - status를 HANDED_OVER로 변경
+        updateFoundItemStatus(handover.getFoundId(), "HANDED_OVER");
+        
+        // Notification 서비스로 알림 전송
+        sendNotification(
+            handover.getRequesterId(),
+            "HANDOVER_COMPLETED",
+            "인계 완료",
+            "인계 요청 #" + handoverId + "이 완료되었습니다.",
+            handoverId
+        );
+        sendNotification(
+            handover.getResponderId(),
+            "HANDOVER_COMPLETED",
+            "인계 완료",
+            "인계 요청 #" + handoverId + "이 완료되었습니다.",
+            handoverId
+        );
         
         return HandoverResponse.from(handover);
     }
@@ -208,7 +314,18 @@ public class HandoverService {
         handover.setCanceledAt(LocalDateTime.now());
         handover.setCancelReason(reason);
         
-        // TODO: Notification 서비스로 알림 전송
+        // Notification 서비스로 알림 전송
+        Long notifyUserId = handover.getRequesterId().equals(userId) 
+            ? handover.getResponderId() 
+            : handover.getRequesterId();
+        
+        sendNotification(
+            notifyUserId,
+            "HANDOVER_CANCELED",
+            "인계 취소됨",
+            "인계 요청 #" + handoverId + "이 취소되었습니다. 사유: " + reason,
+            handoverId
+        );
         
         return HandoverResponse.from(handover);
     }
@@ -250,5 +367,56 @@ public class HandoverService {
         return handoverRepository.countByStatusAndCompletedAtBetween(
             HandoverStatus.COMPLETED, startDate, endDate
         );
+    }
+    
+    // ==================== 헬퍼 메서드 ====================
+    
+    // Found 서비스에서 습득물 조회
+    private FoundItemDTO getFoundItemById(Long foundId) {
+        try {
+            String url = serviceUrlProperties.getFoundService().getUrl() + "/api/found/" + foundId;
+            return restTemplate.getForObject(url, FoundItemDTO.class);
+        } catch (Exception e) {
+            System.err.println("Found 서비스 호출 실패: " + e.getMessage());
+            return null;
+        }
+    }
+    
+    // Lost 서비스 상태 업데이트
+    private void updateLostItemStatus(Long lostId, String status) {
+        try {
+            String url = serviceUrlProperties.getLostService().getUrl() + "/api/lost/" + lostId + "/status";
+            Map<String, String> request = new HashMap<>();
+            request.put("status", status);
+            restTemplate.put(url, request);
+        } catch (Exception e) {
+            System.err.println("Lost 서비스 상태 업데이트 실패: " + e.getMessage());
+        }
+    }
+    
+    // Found 서비스 상태 업데이트
+    private void updateFoundItemStatus(Long foundId, String status) {
+        try {
+            String url = serviceUrlProperties.getFoundService().getUrl() + "/api/found/" + foundId + "/status";
+            Map<String, String> request = new HashMap<>();
+            request.put("status", status);
+            restTemplate.put(url, request);
+        } catch (Exception e) {
+            System.err.println("Found 서비스 상태 업데이트 실패: " + e.getMessage());
+        }
+    }
+    
+    // Notification 서비스로 알림 전송
+    private void sendNotification(Long userId, String type, String title, String message, Long relatedId) {
+        try {
+            String url = serviceUrlProperties.getNotificationService().getUrl() + "/api/notifications";
+            NotificationCreateRequest request = new NotificationCreateRequest(
+                userId, type, title, message, relatedId
+            );
+            restTemplate.postForObject(url, request, Object.class);
+        } catch (Exception e) {
+            System.err.println("Notification 서비스 호출 실패: " + e.getMessage());
+            // 알림 전송 실패는 메인 비즈니스 로직에 영향을 주지 않도록 로그만 남김
+        }
     }
 }
