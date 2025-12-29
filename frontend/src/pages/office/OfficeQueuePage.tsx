@@ -1,252 +1,143 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { handoverApi } from '@/api/handover.api';
-import type { Handover } from '@/types/handover.types';
+import { foundApi } from '@/api/found.api';
+import type { FoundItem } from '@/types/found.types';
 import Loading from '@/components/common/Loading';
 import StatusBadge from '@/components/common/StatusBadge';
-import { formatDateTime } from '@/utils/formatters';
+import { formatDateTime, getCategoryLabel } from '@/utils/formatters';
 
 export default function OfficeQueuePage() {
   const navigate = useNavigate();
-  const [handovers, setHandovers] = useState<Handover[]>([]);
+  const [items, setItems] = useState<FoundItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [filter, setFilter] = useState<'ALL' | 'PENDING' | 'APPROVED'>('PENDING');
 
   useEffect(() => {
-    fetchHandovers();
+    fetchQueue();
   }, []);
 
-  const fetchHandovers = async () => {
+  const fetchQueue = async () => {
     try {
       setLoading(true);
-      const response = await handoverApi.getAllHandovers({ page: 0, size: 100 });
-      setHandovers(response.content);
-    } catch (err: any) {
-      setError(err.response?.data?.message || '목록을 불러오는데 실패했습니다.');
+      // 관리실에서 처리할 습득물 목록 (REGISTERED 상태)
+      const data = await foundApi.getAll({ page: 0, size: 100 });
+      setItems((data.content || data).filter((item: FoundItem) => item.status === 'REGISTERED'));
+    } catch (err) {
+      console.error('Failed to fetch queue:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleApprove = async (handoverId: number) => {
-    if (!confirm('이 인계 요청을 승인하시겠습니까?')) return;
-
+  const handleAccept = async (id: number) => {
     try {
-      await handoverApi.approve(handoverId);
-      await fetchHandovers();
-      alert('승인되었습니다!');
+      await foundApi.updateStatus(id, 'STORED');
+      alert('보관 처리되었습니다.');
+      fetchQueue();
     } catch (err: any) {
-      alert(err.response?.data?.message || '승인에 실패했습니다.');
+      alert(err.response?.data?.message || '처리에 실패했습니다.');
     }
   };
-
-  const filteredHandovers = handovers.filter(h => {
-    // OFFICE가 승인해야 하는 단계
-    const needsOfficeApproval = h.method === 'OFFICE' && 
-      (h.status === 'ACCEPTED_BY_FINDER' || h.status === 'VERIFIED_BY_SECURITY');
-
-    if (filter === 'PENDING') {
-      return needsOfficeApproval;
-    } else if (filter === 'APPROVED') {
-      return h.status === 'APPROVED_BY_OFFICE' || h.status === 'SCHEDULED' || h.status === 'COMPLETED';
-    }
-    return h.method === 'OFFICE';
-  });
-
-  const pendingCount = handovers.filter(h => 
-    h.method === 'OFFICE' && 
-    (h.status === 'ACCEPTED_BY_FINDER' || h.status === 'VERIFIED_BY_SECURITY')
-  ).length;
 
   if (loading) return <Loading />;
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
+    <div className="min-vh-100 bg-light">
       {/* 헤더 */}
-      <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <button onClick={() => navigate('/dashboard')} style={{ marginRight: '10px' }}>
-            ← 대시보드
+      <nav className="navbar navbar-light bg-white shadow-sm mb-4">
+        <div className="container-fluid">
+          <button 
+            className="btn btn-link text-decoration-none"
+            onClick={() => navigate('/dashboard')}
+          >
+            <i className="bi bi-arrow-left me-2"></i>
+            대시보드로 돌아가기
           </button>
-          <h1 style={{ display: 'inline', marginLeft: '10px' }}>
-            관리실 접수 대기
-            {pendingCount > 0 && (
-              <span style={{
-                marginLeft: '10px',
-                padding: '4px 12px',
-                backgroundColor: '#ff9900',
-                color: 'white',
-                borderRadius: '12px',
-                fontSize: '16px',
-              }}>
-                {pendingCount}
-              </span>
+        </div>
+      </nav>
+
+      <div className="container py-4">
+        {/* 타이틀 */}
+        <div className="mb-4">
+          <h2 className="fw-bold mb-2">
+            <i className="bi bi-clock-history text-warning me-2"></i>
+            접수 대기 목록
+            {items.length > 0 && (
+              <span className="badge bg-warning ms-2">{items.length}</span>
             )}
-          </h1>
+          </h2>
+          <p className="text-muted mb-0">새로 등록된 습득물을 보관 처리하세요</p>
         </div>
-      </div>
 
-      {/* 필터 */}
-      <div style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}>
-        <button
-          onClick={() => setFilter('PENDING')}
-          style={{
-            padding: '8px 16px',
-            border: '1px solid #ddd',
-            backgroundColor: filter === 'PENDING' ? '#ff9900' : 'white',
-            color: filter === 'PENDING' ? 'white' : '#333',
-            borderRadius: '4px',
-            cursor: 'pointer',
-          }}
-        >
-          승인 대기 ({pendingCount})
-        </button>
-        <button
-          onClick={() => setFilter('APPROVED')}
-          style={{
-            padding: '8px 16px',
-            border: '1px solid #ddd',
-            backgroundColor: filter === 'APPROVED' ? '#00cc66' : 'white',
-            color: filter === 'APPROVED' ? 'white' : '#333',
-            borderRadius: '4px',
-            cursor: 'pointer',
-          }}
-        >
-          승인 완료
-        </button>
-        <button
-          onClick={() => setFilter('ALL')}
-          style={{
-            padding: '8px 16px',
-            border: '1px solid #ddd',
-            backgroundColor: filter === 'ALL' ? '#0066cc' : 'white',
-            color: filter === 'ALL' ? 'white' : '#333',
-            borderRadius: '4px',
-            cursor: 'pointer',
-          }}
-        >
-          전체
-        </button>
-      </div>
-
-      {error && (
-        <div style={{ 
-          padding: '12px', 
-          backgroundColor: '#ffe6e6', 
-          color: '#cc0000', 
-          borderRadius: '4px',
-          marginBottom: '20px',
-        }}>
-          {error}
-        </div>
-      )}
-
-      {/* 인계 목록 */}
-      {filteredHandovers.length === 0 ? (
-        <div style={{ 
-          textAlign: 'center', 
-          padding: '60px 20px',
-          backgroundColor: '#f5f5f5',
-          borderRadius: '8px',
-        }}>
-          <p style={{ fontSize: '16px', color: '#666' }}>
-            {filter === 'PENDING' ? '승인 대기 중인 인계가 없습니다.' : '인계 내역이 없습니다.'}
-          </p>
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gap: '16px' }}>
-          {filteredHandovers.map((handover) => {
-            const isPending = handover.status === 'ACCEPTED_BY_FINDER' || handover.status === 'VERIFIED_BY_SECURITY';
-
-            return (
-              <div
-                key={handover.id}
-                style={{
-                  border: isPending ? '2px solid #ff9900' : '1px solid #ddd',
-                  borderRadius: '8px',
-                  padding: '20px',
-                  backgroundColor: isPending ? '#fff4e6' : 'white',
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px' }}>
-                  <div>
-                    {isPending && (
-                      <span style={{
-                        display: 'inline-block',
-                        padding: '4px 12px',
-                        backgroundColor: '#ff9900',
-                        color: 'white',
-                        borderRadius: '4px',
-                        fontSize: '12px',
-                        fontWeight: 'bold',
-                        marginRight: '8px',
-                      }}>
-                        승인 필요
+        {/* 목록 */}
+        {items.length === 0 ? (
+          <div className="card shadow-sm border-0">
+            <div className="card-body text-center py-5">
+              <i className="bi bi-check-circle fs-1 text-success d-block mb-3"></i>
+              <h5 className="text-success mb-3">처리할 항목이 없습니다</h5>
+              <p className="text-muted small">모든 습득물이 처리되었습니다</p>
+            </div>
+          </div>
+        ) : (
+          <div className="row g-3">
+            {items.map((item) => (
+              <div key={item.id} className="col-12 col-md-6 col-lg-4">
+                <div className="card shadow-sm border-0 h-100">
+                  <div className="card-body">
+                    {/* 배지 */}
+                    <div className="d-flex gap-2 mb-3">
+                      <span className="badge bg-light text-dark">
+                        <i className="bi bi-tag me-1"></i>
+                        {getCategoryLabel(item.category)}
                       </span>
-                    )}
-                    <StatusBadge status={handover.status} />
-                  </div>
-                  <div style={{ fontSize: '13px', color: '#999' }}>
-                    요청: {formatDateTime(handover.createdAt)}
-                  </div>
-                </div>
+                      <StatusBadge status={item.status} />
+                    </div>
 
-                <div style={{ 
-                  padding: '12px',
-                  backgroundColor: 'white',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  marginBottom: '12px',
-                }}>
-                  <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
-                    <strong>인계 ID:</strong> #{handover.id}
-                  </div>
-                  <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
-                    <strong>분실 신고:</strong> #{handover.lostId}
-                  </div>
-                  <div style={{ fontSize: '14px', color: '#666' }}>
-                    <strong>습득물:</strong> #{handover.foundId}
-                  </div>
-                </div>
+                    {/* 제목 */}
+                    <h5 className="card-title mb-2 text-truncate-1">
+                      {item.title}
+                    </h5>
 
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <button
-                    onClick={() => navigate(`/handover/${handover.id}`)}
-                    style={{
-                      flex: 1,
-                      padding: '10px',
-                      backgroundColor: '#0066cc',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    상세 보기
-                  </button>
-                  {isPending && (
-                    <button
-                      onClick={() => handleApprove(handover.id)}
-                      style={{
-                        padding: '10px 20px',
-                        backgroundColor: '#00cc66',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        fontWeight: 'bold',
-                      }}
-                    >
-                      ✓ 승인
-                    </button>
-                  )}
+                    {/* 설명 */}
+                    <p className="card-text text-muted small mb-3 text-truncate-2">
+                      {item.description}
+                    </p>
+
+                    {/* 습득 정보 */}
+                    <div className="small text-muted mb-3">
+                      <div className="mb-1">
+                        <i className="bi bi-geo-alt me-1"></i>
+                        {item.foundPlace}
+                      </div>
+                      <div>
+                        <i className="bi bi-calendar me-1"></i>
+                        {formatDateTime(item.foundAt)}
+                      </div>
+                    </div>
+
+                    {/* 액션 버튼 */}
+                    <div className="d-grid gap-2">
+                      <button
+                        className="btn btn-warning"
+                        onClick={() => handleAccept(item.id)}
+                      >
+                        <i className="bi bi-box-seam me-2"></i>
+                        보관 처리
+                      </button>
+                      <button
+                        className="btn btn-outline-primary"
+                        onClick={() => navigate(`/found/${item.id}`)}
+                      >
+                        <i className="bi bi-eye me-2"></i>
+                        상세보기
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
-            );
-          })}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

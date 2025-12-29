@@ -1,15 +1,15 @@
 // 카테고리 목록 (백엔드 Category enum과 일치)
 export const CATEGORIES = [
-  { value: 'ELECTRONICS', label: '전자기기', requiresSecurityCheck: true },
-  { value: 'WALLET', label: '지갑', requiresSecurityCheck: true },
-  { value: 'ID_CARD', label: '신분증', requiresSecurityCheck: true },
-  { value: 'BAG', label: '가방', requiresSecurityCheck: false },
-  { value: 'CLOTHING', label: '의류', requiresSecurityCheck: false },
-  { value: 'BOOK', label: '책', requiresSecurityCheck: false },
-  { value: 'ACCESSORY', label: '액세서리', requiresSecurityCheck: false },
-  { value: 'SPORTS', label: '운동용품', requiresSecurityCheck: false },
-  { value: 'STATIONERY', label: '문구', requiresSecurityCheck: false },
-  { value: 'ETC', label: '기타', requiresSecurityCheck: false },
+  { value: 'ELECTRONICS', label: '전자기기', icon: '📱', requiresSecurityCheck: true },
+  { value: 'WALLET', label: '지갑', icon: '💰', requiresSecurityCheck: true },
+  { value: 'ID_CARD', label: '신분증', icon: '🪪', requiresSecurityCheck: true },
+  { value: 'BAG', label: '가방', icon: '🎒', requiresSecurityCheck: false },
+  { value: 'CLOTHING', label: '의류', icon: '👕', requiresSecurityCheck: false },
+  { value: 'BOOK', label: '책', icon: '📚', requiresSecurityCheck: false },
+  { value: 'ACCESSORY', label: '액세서리', icon: '💍', requiresSecurityCheck: false },
+  { value: 'SPORTS', label: '운동용품', icon: '⚽', requiresSecurityCheck: false },
+  { value: 'STATIONERY', label: '문구', icon: '✏️', requiresSecurityCheck: false },
+  { value: 'ETC', label: '기타', icon: '📦', requiresSecurityCheck: false },
 ] as const;
 
 // 장소 목록 (예시)

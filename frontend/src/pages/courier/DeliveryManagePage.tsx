@@ -8,335 +8,220 @@ import { formatDateTime } from '@/utils/formatters';
 
 export default function DeliveryManagePage() {
   const navigate = useNavigate();
-  const [handovers, setHandovers] = useState<Handover[]>([]);
+  const [deliveries, setDeliveries] = useState<Handover[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [filter, setFilter] = useState<'ALL' | 'SCHEDULED' | 'COMPLETED'>('SCHEDULED');
+  const [filter, setFilter] = useState<string>('ALL');
 
   useEffect(() => {
-    fetchHandovers();
+    fetchDeliveries();
   }, []);
 
-  const fetchHandovers = async () => {
+  const fetchDeliveries = async () => {
     try {
       setLoading(true);
-      const response = await handoverApi.getAllHandovers({ page: 0, size: 100 });
-      // 배송 방식만 필터링
-      const courierHandovers = response.content.filter((h: Handover) => h.method === 'COURIER');
-      setHandovers(courierHandovers);
-    } catch (err: any) {
-      setError(err.response?.data?.message || '목록을 불러오는데 실패했습니다.');
+      // COURIER 방식의 인계 목록
+      const data = await handoverApi.getAll({ page: 0, size: 100 });
+      setDeliveries(data.filter((h: Handover) => h.method === 'COURIER'));
+    } catch (err) {
+      console.error('Failed to fetch deliveries:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredHandovers = handovers.filter(h => {
-    if (filter === 'SCHEDULED') {
-      return h.status === 'SCHEDULED';
-    } else if (filter === 'COMPLETED') {
-      return h.status === 'COMPLETED';
+  const handleUpdateStatus = async (id: number, status: string) => {
+    try {
+      await handoverApi.updateCourierStatus(id, status);
+      alert('상태가 업데이트되었습니다.');
+      fetchDeliveries();
+    } catch (err: any) {
+      alert(err.response?.data?.message || '처리에 실패했습니다.');
     }
-    return true;
+  };
+
+  const filteredDeliveries = deliveries.filter(d => {
+    if (filter === 'ALL') return true;
+    if (filter === 'PENDING') return d.courierStatus === 'PENDING';
+    if (filter === 'IN_TRANSIT') return d.courierStatus === 'IN_TRANSIT';
+    return d.courierStatus === filter;
   });
 
-  const scheduledCount = handovers.filter(h => h.status === 'SCHEDULED').length;
-  const completedCount = handovers.filter(h => h.status === 'COMPLETED').length;
+  const getDeliveryStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      PENDING: '픽업 대기',
+      PICKED_UP: '픽업 완료',
+      IN_TRANSIT: '배송 중',
+      DELIVERED: '배송 완료',
+    };
+    return labels[status] || status;
+  };
+
+  const getDeliveryStatusColor = (status: string) => {
+    const colors: Record<string, string> = {
+      PENDING: 'warning',
+      PICKED_UP: 'info',
+      IN_TRANSIT: 'primary',
+      DELIVERED: 'success',
+    };
+    return colors[status] || 'secondary';
+  };
 
   if (loading) return <Loading />;
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
+    <div className="min-vh-100 bg-light">
       {/* 헤더 */}
-      <div style={{ marginBottom: '20px' }}>
-        <button onClick={() => navigate('/dashboard')} style={{ marginRight: '10px' }}>
-          ← 대시보드
-        </button>
-        <h1 style={{ display: 'inline', marginLeft: '10px' }}>
-          배송 관리
-          {scheduledCount > 0 && (
-            <span style={{
-              marginLeft: '10px',
-              padding: '4px 12px',
-              backgroundColor: '#00cccc',
-              color: 'white',
-              borderRadius: '12px',
-              fontSize: '16px',
-            }}>
-              {scheduledCount}
-            </span>
-          )}
-        </h1>
-      </div>
-
-      {/* 안내 */}
-      <div style={{ 
-        padding: '16px',
-        backgroundColor: '#e6ffff',
-        borderLeft: '4px solid #00cccc',
-        borderRadius: '4px',
-        marginBottom: '20px',
-      }}>
-        <strong>📦 배송 안내</strong>
-        <div style={{ marginTop: '8px', fontSize: '14px', color: '#666' }}>
-          실제 택배 서비스와 연동되지 않습니다. 배송 상태만 관리합니다.
+      <nav className="navbar navbar-light bg-white shadow-sm mb-4">
+        <div className="container-fluid">
+          <button 
+            className="btn btn-link text-decoration-none"
+            onClick={() => navigate('/dashboard')}
+          >
+            <i className="bi bi-arrow-left me-2"></i>
+            대시보드로 돌아가기
+          </button>
         </div>
-      </div>
+      </nav>
 
-      {/* 통계 */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: '16px',
-        marginBottom: '20px',
-      }}>
-        <div style={{
-          padding: '20px',
-          border: '2px solid #ff9900',
-          borderRadius: '8px',
-          backgroundColor: '#fff4e6',
-        }}>
-          <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>
-            배송 예정
-          </div>
-          <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#ff9900' }}>
-            {scheduledCount}
-          </div>
+      <div className="container py-4">
+        {/* 타이틀 */}
+        <div className="mb-4">
+          <h2 className="fw-bold mb-2">
+            <i className="bi bi-truck text-info me-2"></i>
+            배송 관리
+          </h2>
+          <p className="text-muted mb-0">배송 방식 인계 건의 상태를 관리합니다</p>
         </div>
-        <div style={{
-          padding: '20px',
-          border: '2px solid #00cc66',
-          borderRadius: '8px',
-          backgroundColor: '#f0fff4',
-        }}>
-          <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>
-            배송 완료
-          </div>
-          <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#00cc66' }}>
-            {completedCount}
-          </div>
-        </div>
-      </div>
 
-      {/* 필터 */}
-      <div style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}>
-        <button
-          onClick={() => setFilter('SCHEDULED')}
-          style={{
-            padding: '8px 16px',
-            border: '1px solid #ddd',
-            backgroundColor: filter === 'SCHEDULED' ? '#ff9900' : 'white',
-            color: filter === 'SCHEDULED' ? 'white' : '#333',
-            borderRadius: '4px',
-            cursor: 'pointer',
-          }}
-        >
-          배송 예정 ({scheduledCount})
-        </button>
-        <button
-          onClick={() => setFilter('COMPLETED')}
-          style={{
-            padding: '8px 16px',
-            border: '1px solid #ddd',
-            backgroundColor: filter === 'COMPLETED' ? '#00cc66' : 'white',
-            color: filter === 'COMPLETED' ? 'white' : '#333',
-            borderRadius: '4px',
-            cursor: 'pointer',
-          }}
-        >
-          배송 완료 ({completedCount})
-        </button>
-        <button
-          onClick={() => setFilter('ALL')}
-          style={{
-            padding: '8px 16px',
-            border: '1px solid #ddd',
-            backgroundColor: filter === 'ALL' ? '#0066cc' : 'white',
-            color: filter === 'ALL' ? 'white' : '#333',
-            borderRadius: '4px',
-            cursor: 'pointer',
-          }}
-        >
-          전체
-        </button>
-      </div>
-
-      {error && (
-        <div style={{ 
-          padding: '12px', 
-          backgroundColor: '#ffe6e6', 
-          color: '#cc0000', 
-          borderRadius: '4px',
-          marginBottom: '20px',
-        }}>
-          {error}
-        </div>
-      )}
-
-      {/* 배송 목록 */}
-      {filteredHandovers.length === 0 ? (
-        <div style={{ 
-          textAlign: 'center', 
-          padding: '60px 20px',
-          backgroundColor: '#f5f5f5',
-          borderRadius: '8px',
-        }}>
-          <p style={{ fontSize: '16px', color: '#666' }}>
-            {filter === 'SCHEDULED' ? '배송 예정 건이 없습니다.' : 
-             filter === 'COMPLETED' ? '배송 완료 건이 없습니다.' :
-             '배송 내역이 없습니다.'}
-          </p>
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gap: '16px' }}>
-          {filteredHandovers.map((handover) => (
-            <div
-              key={handover.id}
-              onClick={() => navigate(`/handover/${handover.id}`)}
-              style={{
-                border: handover.status === 'SCHEDULED' ? '2px solid #ff9900' : '1px solid #ddd',
-                borderRadius: '8px',
-                padding: '20px',
-                backgroundColor: handover.status === 'SCHEDULED' ? '#fff4e6' : 'white',
-                cursor: 'pointer',
-                transition: 'box-shadow 0.2s',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.boxShadow = 'none';
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px' }}>
-                <div>
-                  {handover.status === 'SCHEDULED' && (
-                    <span style={{
-                      display: 'inline-block',
-                      padding: '4px 12px',
-                      backgroundColor: '#ff9900',
-                      color: 'white',
-                      borderRadius: '4px',
-                      fontSize: '12px',
-                      fontWeight: 'bold',
-                      marginRight: '8px',
-                    }}>
-                      📦 배송 예정
-                    </span>
-                  )}
-                  <StatusBadge status={handover.status} />
-                </div>
-                <div style={{ fontSize: '13px', color: '#999' }}>
-                  요청: {formatDateTime(handover.createdAt)}
-                </div>
-              </div>
-
-              <div style={{ 
-                padding: '12px',
-                backgroundColor: 'white',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-                marginBottom: '12px',
-              }}>
-                <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
-                  <strong>배송 번호:</strong> COURIER-{handover.id}
-                </div>
-                <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
-                  <strong>분실 신고:</strong> #{handover.lostId}
-                </div>
-                <div style={{ fontSize: '14px', color: '#666' }}>
-                  <strong>습득물:</strong> #{handover.foundId}
-                </div>
-              </div>
-
-              {/* 배송 단계 */}
-              <div style={{ 
-                padding: '16px',
-                backgroundColor: '#f9f9f9',
-                borderRadius: '4px',
-                marginBottom: '12px',
-              }}>
-                <div style={{ fontWeight: 'bold', marginBottom: '12px' }}>
-                  배송 단계
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <DeliveryStep 
-                    label="픽업" 
-                    completed={handover.status !== 'REQUESTED'}
-                  />
-                  <DeliveryStep 
-                    label="이동 중" 
-                    completed={handover.status === 'SCHEDULED' || handover.status === 'COMPLETED'}
-                  />
-                  <DeliveryStep 
-                    label="전달 완료" 
-                    completed={handover.status === 'COMPLETED'}
-                  />
-                </div>
-              </div>
-
-              {handover.scheduleAt && (
-                <div style={{ 
-                  padding: '8px 12px',
-                  backgroundColor: '#fff4e6',
-                  borderRadius: '4px',
-                  fontSize: '13px',
-                  color: '#ff9900',
-                  marginBottom: '8px',
-                }}>
-                  📅 배송 예정: {formatDateTime(handover.scheduleAt)}
-                  {handover.meetPlace && ` | 📍 ${handover.meetPlace}`}
-                </div>
-              )}
-
-              {handover.completedAt && (
-                <div style={{ 
-                  padding: '8px 12px',
-                  backgroundColor: '#e6fff2',
-                  borderRadius: '4px',
-                  fontSize: '13px',
-                  color: '#00cc66',
-                }}>
-                  ✅ 배송 완료: {formatDateTime(handover.completedAt)}
-                </div>
-              )}
-            </div>
+        {/* 필터 */}
+        <ul className="nav nav-pills mb-4">
+          {[
+            { key: 'ALL', label: '전체', icon: 'bi-list' },
+            { key: 'PENDING', label: '픽업 대기', icon: 'bi-clock' },
+            { key: 'PICKED_UP', label: '픽업 완료', icon: 'bi-box-seam' },
+            { key: 'IN_TRANSIT', label: '배송 중', icon: 'bi-truck' },
+            { key: 'DELIVERED', label: '배송 완료', icon: 'bi-check-circle' },
+          ].map(({ key, label, icon }) => (
+            <li key={key} className="nav-item">
+              <button
+                className={`nav-link ${filter === key ? 'active' : ''}`}
+                onClick={() => setFilter(key)}
+              >
+                <i className={`${icon} me-1`}></i>
+                {label}
+                <span className="badge bg-light text-dark ms-2">
+                  {key === 'ALL' ? deliveries.length :
+                   deliveries.filter(d => d.courierStatus === key).length}
+                </span>
+              </button>
+            </li>
           ))}
+        </ul>
+
+        {/* 안내 메시지 */}
+        <div className="alert alert-info d-flex align-items-start mb-4" role="alert">
+          <i className="bi bi-info-circle me-2 flex-shrink-0"></i>
+          <div className="small">
+            <strong>배송 단계</strong><br />
+            픽업 대기 → 픽업 완료 → 배송 중 → 배송 완료 순서로 진행됩니다.
+            각 단계별로 상태를 업데이트해주세요.
+          </div>
         </div>
-      )}
-    </div>
-  );
-}
 
-// 배송 단계 컴포넌트
-interface DeliveryStepProps {
-  label: string;
-  completed: boolean;
-}
+        {/* 목록 */}
+        {filteredDeliveries.length === 0 ? (
+          <div className="card shadow-sm border-0">
+            <div className="card-body text-center py-5">
+              <i className="bi bi-inbox fs-1 text-muted d-block mb-3"></i>
+              <h5 className="text-muted mb-3">배송 건이 없습니다</h5>
+            </div>
+          </div>
+        ) : (
+          <div className="row g-3">
+            {filteredDeliveries.map((delivery) => (
+              <div key={delivery.id} className="col-12">
+                <div className="card shadow-sm border-0">
+                  <div className="card-body">
+                    <div className="row">
+                      <div className="col-12 col-md-8">
+                        {/* 배송 상태 */}
+                        <div className="mb-3">
+                          <span className={`badge bg-${getDeliveryStatusColor(delivery.courierStatus || 'PENDING')}`}>
+                            <i className="bi bi-truck me-1"></i>
+                            {getDeliveryStatusLabel(delivery.courierStatus || 'PENDING')}
+                          </span>
+                          <StatusBadge status={delivery.status} />
+                          {' '}
+                        </div>
 
-function DeliveryStep({ label, completed }: DeliveryStepProps) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-      <div style={{
-        width: '24px',
-        height: '24px',
-        borderRadius: '50%',
-        backgroundColor: completed ? '#00cc66' : '#ddd',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: 'white',
-        fontSize: '14px',
-        fontWeight: 'bold',
-      }}>
-        {completed ? '✓' : '○'}
-      </div>
-      <div style={{ 
-        fontSize: '14px', 
-        color: completed ? '#333' : '#999',
-        fontWeight: completed ? 'bold' : 'normal',
-      }}>
-        {label}
+                        {/* 정보 */}
+                        <h5 className="card-title mb-2">
+                          분실물: {delivery.lostTitle || '정보 없음'}
+                        </h5>
+                        <p className="text-muted mb-2">
+                          <i className="bi bi-box me-1"></i>
+                          습득물: {delivery.foundTitle || '정보 없음'}
+                        </p>
+
+                        {/* 주소 정보 */}
+                        {delivery.deliveryAddress && (
+                          <div className="alert alert-light py-2 px-3 mb-2">
+                            <i className="bi bi-geo-alt me-1"></i>
+                            <strong>배송 주소:</strong> {delivery.deliveryAddress}
+                          </div>
+                        )}
+
+                        <small className="text-muted">
+                          요청일: {formatDateTime(delivery.createdAt)}
+                        </small>
+                      </div>
+
+                      {/* 액션 */}
+                      <div className="col-12 col-md-4">
+                        <div className="d-flex flex-column gap-2 h-100 justify-content-center">
+                          {delivery.courierStatus === 'PENDING' && (
+                            <button
+                              className="btn btn-warning"
+                              onClick={() => handleUpdateStatus(delivery.id, 'PICKED_UP')}
+                            >
+                              <i className="bi bi-box-seam me-2"></i>
+                              픽업 완료
+                            </button>
+                          )}
+                          {delivery.courierStatus === 'PICKED_UP' && (
+                            <button
+                              className="btn btn-primary"
+                              onClick={() => handleUpdateStatus(delivery.id, 'IN_TRANSIT')}
+                            >
+                              <i className="bi bi-truck me-2"></i>
+                              배송 시작
+                            </button>
+                          )}
+                          {delivery.courierStatus === 'IN_TRANSIT' && (
+                            <button
+                              className="btn btn-success"
+                              onClick={() => handleUpdateStatus(delivery.id, 'DELIVERED')}
+                            >
+                              <i className="bi bi-check-circle me-2"></i>
+                              배송 완료
+                            </button>
+                          )}
+                          <button
+                            className="btn btn-outline-primary"
+                            onClick={() => navigate(`/handover/${delivery.id}`)}
+                          >
+                            <i className="bi bi-eye me-2"></i>
+                            상세보기
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

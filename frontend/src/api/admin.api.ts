@@ -49,6 +49,12 @@ export const adminApi = {
 
   // ========== 사용자 제재 ==========
   
+  // 사용자 목록 조회
+  getUsers: async (): Promise<any[]> => {
+    const response = await apiClient.get('/api/admin/users');
+    return response.data.content || response.data;
+  },
+
   // 사용자 정지
   blockUser: async (userId: number): Promise<void> => {
     await apiClient.post(`/api/admin/users/${userId}/block`);
@@ -57,6 +63,11 @@ export const adminApi = {
   // 사용자 정지 해제
   unblockUser: async (userId: number): Promise<void> => {
     await apiClient.post(`/api/admin/users/${userId}/unblock`);
+  },
+
+  // blindContent alias for compatibility
+  blindContent: async (targetType: string, targetId: number): Promise<void> => {
+    await apiClient.post(`/api/admin/items/${targetType}/${targetId}/blind`);
   },
 
   // ========== 운영 통계 ==========

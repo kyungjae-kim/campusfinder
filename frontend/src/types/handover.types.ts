@@ -28,6 +28,14 @@ export interface Handover {
   contactDisclosed?: boolean;
   createdAt: string;
   updatedAt?: string;
+
+  // 추가 필드 (DTO에서 포함될 수 있음)
+  lostTitle?: string;
+  foundTitle?: string;
+  requesterName?: string;
+  responderName?: string;
+  courierStatus?: string;
+  deliveryAddress?: string;
 }
 
 export interface HandoverCreateRequest {

@@ -7,6 +7,7 @@ export interface Report {
   targetId: number;
   reporterId: number;
   reporterNickname?: string;
+  reporterName?: string;  // alias for reporterNickname
   reason: string;
   status: ReportStatus;
   resolvedBy?: number;

@@ -11,6 +11,7 @@ export default function MyHandoverListPage() {
   const [handovers, setHandovers] = useState<Handover[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [filter, setFilter] = useState<string>('ALL');
 
   useEffect(() => {
     fetchHandovers();
@@ -28,119 +29,166 @@ export default function MyHandoverListPage() {
     }
   };
 
+  const filteredHandovers = handovers.filter(h => {
+    if (filter === 'ALL') return true;
+    if (filter === 'PENDING') return h.status === 'REQUESTED';
+    if (filter === 'IN_PROGRESS') return ['ACCEPTED_BY_FINDER', 'VERIFIED_BY_SECURITY', 'APPROVED_BY_OFFICE', 'SCHEDULED'].includes(h.status);
+    return h.status === filter;
+  });
+
   if (loading) return <Loading />;
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
-      <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <button onClick={() => navigate('/dashboard')} style={{ marginRight: '10px' }}>
-            ← 대시보드
+    <div className="min-vh-100 bg-light">
+      {/* 헤더 */}
+      <nav className="navbar navbar-light bg-white shadow-sm mb-4">
+        <div className="container-fluid">
+          <button 
+            className="btn btn-link text-decoration-none"
+            onClick={() => navigate('/dashboard')}
+          >
+            <i className="bi bi-arrow-left me-2"></i>
+            대시보드로 돌아가기
           </button>
-          <h1 style={{ display: 'inline', marginLeft: '10px' }}>내 인계 요청</h1>
         </div>
-      </div>
+      </nav>
 
-      {error && (
-        <div style={{ 
-          padding: '12px', 
-          backgroundColor: '#ffe6e6', 
-          color: '#cc0000', 
-          borderRadius: '4px',
-          marginBottom: '20px',
-        }}>
-          {error}
+      <div className="container py-4">
+        {/* 타이틀 */}
+        <div className="mb-4">
+          <h2 className="fw-bold mb-2">
+            <i className="bi bi-send text-primary me-2"></i>
+            내 인계 요청
+          </h2>
+          <p className="text-muted mb-0">내가 요청한 인계 목록을 확인하세요</p>
         </div>
-      )}
 
-      {handovers.length === 0 ? (
-        <div style={{ 
-          textAlign: 'center', 
-          padding: '60px 20px',
-          backgroundColor: '#f5f5f5',
-          borderRadius: '8px',
-        }}>
-          <p style={{ fontSize: '16px', color: '#666' }}>
-            진행 중인 인계 요청이 없습니다.
-          </p>
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gap: '16px' }}>
-          {handovers.map((handover) => (
-            <div
-              key={handover.id}
-              onClick={() => navigate(`/handover/${handover.id}`)}
-              style={{
-                border: '1px solid #ddd',
-                borderRadius: '8px',
-                padding: '20px',
-                cursor: 'pointer',
-                backgroundColor: 'white',
-                transition: 'box-shadow 0.2s',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.boxShadow = 'none';
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px' }}>
-                <div>
-                  <span style={{ 
-                    padding: '4px 8px',
-                    backgroundColor: '#f0f0f0',
-                    borderRadius: '4px',
-                    fontSize: '12px',
-                    marginRight: '8px',
-                  }}>
-                    {handover.method === 'MEET' ? '대면인계' : 
-                     handover.method === 'OFFICE' ? '관리실' : '배송'}
-                  </span>
-                  <StatusBadge status={handover.status} />
-                </div>
-                <div style={{ fontSize: '13px', color: '#999' }}>
-                  요청: {formatDateTime(handover.createdAt)}
-                </div>
-              </div>
-
-              <div style={{ 
-                padding: '12px',
-                backgroundColor: '#f9f9f9',
-                borderRadius: '4px',
-                marginBottom: '8px',
-              }}>
-                <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#666', marginBottom: '4px' }}>
-                  분실 신고 ID: #{handover.lostId}
-                </div>
-                <div style={{ fontSize: '14px', color: '#666' }}>
-                  습득물 ID: #{handover.foundId}
-                </div>
-              </div>
-
-              {handover.scheduleAt && (
-                <div style={{ fontSize: '14px', color: '#0066cc', marginTop: '8px' }}>
-                  📅 일정: {formatDateTime(handover.scheduleAt)}
-                  {handover.meetPlace && ` | 📍 ${handover.meetPlace}`}
-                </div>
-              )}
-
-              {handover.status === 'CANCELED' && handover.cancelReason && (
-                <div style={{ 
-                  marginTop: '8px',
-                  padding: '8px',
-                  backgroundColor: '#ffe6e6',
-                  borderRadius: '4px',
-                  fontSize: '13px',
-                  color: '#cc0000',
-                }}>
-                  취소 사유: {handover.cancelReason}
-                </div>
-              )}
-            </div>
+        {/* 필터 */}
+        <ul className="nav nav-pills mb-4">
+          {[
+            { key: 'ALL', label: '전체', icon: 'bi-list' },
+            { key: 'PENDING', label: '대기중', icon: 'bi-clock' },
+            { key: 'IN_PROGRESS', label: '진행중', icon: 'bi-arrow-repeat' },
+            { key: 'COMPLETED', label: '완료', icon: 'bi-check-all' },
+            { key: 'CANCELED', label: '취소', icon: 'bi-x-circle' },
+          ].map(({ key, label, icon }) => (
+            <li key={key} className="nav-item">
+              <button
+                className={`nav-link ${filter === key ? 'active' : ''}`}
+                onClick={() => setFilter(key)}
+              >
+                <i className={`${icon} me-1`}></i>
+                {label}
+                <span className="badge bg-light text-dark ms-2">
+                  {key === 'ALL' ? handovers.length :
+                   key === 'PENDING' ? handovers.filter(h => h.status === 'REQUESTED').length :
+                   key === 'IN_PROGRESS' ? handovers.filter(h => ['ACCEPTED_BY_FINDER', 'VERIFIED_BY_SECURITY', 'APPROVED_BY_OFFICE', 'SCHEDULED'].includes(h.status)).length :
+                   handovers.filter(h => h.status === key).length}
+                </span>
+              </button>
+            </li>
           ))}
-        </div>
-      )}
+        </ul>
+
+        {/* 에러 메시지 */}
+        {error && (
+          <div className="alert alert-danger d-flex align-items-center mb-4" role="alert">
+            <i className="bi bi-exclamation-triangle-fill me-2"></i>
+            <div>{error}</div>
+          </div>
+        )}
+
+        {/* 목록 */}
+        {filteredHandovers.length === 0 ? (
+          <div className="card shadow-sm border-0">
+            <div className="card-body text-center py-5">
+              <i className="bi bi-inbox fs-1 text-muted d-block mb-3"></i>
+              <h5 className="text-muted mb-3">인계 요청이 없습니다</h5>
+              <p className="text-muted small">분실물 상세 페이지에서 매칭된 습득물에 인계 요청을 보낼 수 있습니다</p>
+            </div>
+          </div>
+        ) : (
+          <div className="row g-3">
+            {filteredHandovers.map((handover) => (
+              <div key={handover.id} className="col-12">
+                <div 
+                  className="card shadow-sm border-0 card-hover"
+                  onClick={() => navigate(`/handover/${handover.id}`)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <div className="card-body">
+                    <div className="row">
+                      <div className="col-12 col-md-9">
+                        {/* 상태 배지 */}
+                        <div className="mb-3">
+                          <StatusBadge status={handover.status} />
+                          <span className="badge bg-light text-dark ms-2">
+                            <i className="bi bi-truck me-1"></i>
+                            {handover.method === 'MEET' ? '대면 인계' :
+                             handover.method === 'OFFICE' ? '관리실 인계' : '배송 인계'}
+                          </span>
+                        </div>
+
+                        {/* 분실물 정보 */}
+                        <h5 className="card-title mb-2">
+                          분실물: {handover.lostTitle || '정보 없음'}
+                        </h5>
+
+                        {/* 습득물 정보 */}
+                        <p className="text-muted mb-2">
+                          <i className="bi bi-box me-1"></i>
+                          습득물: {handover.foundTitle || '정보 없음'}
+                        </p>
+
+                        {/* 응답자 정보 (마스킹) */}
+                        <p className="text-muted small mb-2">
+                          <i className="bi bi-person me-1"></i>
+                          습득자: {handover.responderName || '알 수 없음'}
+                        </p>
+
+                        {/* 일정 정보 */}
+                        {handover.scheduleAt && (
+                          <div className="alert alert-info py-2 px-3 mb-2">
+                            <i className="bi bi-calendar-event me-1"></i>
+                            <strong>일정:</strong> {formatDateTime(handover.scheduleAt)}
+                            {handover.meetPlace && (
+                              <div className="mt-1">
+                                <i className="bi bi-geo-alt me-1"></i>
+                                {handover.meetPlace}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* 요청일 */}
+                        <small className="text-muted">
+                          요청일: {formatDateTime(handover.createdAt)}
+                        </small>
+                      </div>
+
+                      {/* 액션 */}
+                      <div className="col-12 col-md-3">
+                        <div className="d-flex align-items-center justify-content-md-end h-100 mt-3 mt-md-0">
+                          <button
+                            className="btn btn-outline-primary"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/handover/${handover.id}`);
+                            }}
+                          >
+                            <i className="bi bi-eye me-2"></i>
+                            상세보기
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

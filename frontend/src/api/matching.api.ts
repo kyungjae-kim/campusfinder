@@ -17,4 +17,20 @@ export const matchingApi = {
     });
     return response.data;
   },
+  
+  // Alias for compatibility
+  getMatchCandidates: async (lostId: number, topN: number = 10): Promise<any[]> => {
+    const response = await matchingApi.getMatchingForLost(lostId, topN);
+    // Transform MatchingResponse to MatchCandidate format
+    return response.map(item => ({
+      foundId: item.foundItem?.id || 0,
+      category: item.foundItem?.category || '',
+      title: item.foundItem?.title || '',
+      description: item.foundItem?.description || '',
+      foundAt: item.foundItem?.foundAt || '',
+      foundPlace: item.foundItem?.foundPlace || '',
+      score: item.score,
+      matchReasons: item.reasons,
+    }));
+  },
 };

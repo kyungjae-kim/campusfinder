@@ -34,165 +34,167 @@ export default function LostItemListPage() {
     return item.status === filter;
   });
 
+  const getStatusCount = (status: string) => {
+    if (status === 'ALL') return items.length;
+    return items.filter(item => item.status === status).length;
+  };
+
   if (loading) return <Loading />;
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
-      <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <button onClick={() => navigate('/dashboard')} style={{ marginRight: '10px' }}>
-            ← 대시보드
-          </button>
-          <h1 style={{ display: 'inline', marginLeft: '10px' }}>내 분실 신고</h1>
-        </div>
-        <button 
-          onClick={() => navigate('/lost/create')}
-          style={{
-            padding: '10px 20px',
-            backgroundColor: '#0066cc',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontWeight: 'bold',
-          }}
-        >
-          + 새 분실 신고
-        </button>
-      </div>
-
-      {/* 필터 */}
-      <div style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}>
-        {['ALL', 'OPEN', 'MATCHED', 'CLOSED'].map((status) => (
-          <button
-            key={status}
-            onClick={() => setFilter(status as any)}
-            style={{
-              padding: '8px 16px',
-              border: '1px solid #ddd',
-              backgroundColor: filter === status ? '#0066cc' : 'white',
-              color: filter === status ? 'white' : '#333',
-              borderRadius: '4px',
-              cursor: 'pointer',
-            }}
+    <div className="min-vh-100 bg-light">
+      {/* 헤더 */}
+      <nav className="navbar navbar-light bg-white shadow-sm mb-4">
+        <div className="container-fluid">
+          <button 
+            className="btn btn-link text-decoration-none"
+            onClick={() => navigate('/dashboard')}
           >
-            {status === 'ALL' ? '전체' : status === 'OPEN' ? '진행중' : status === 'MATCHED' ? '매칭됨' : '완료'}
+            <i className="bi bi-arrow-left me-2"></i>
+            대시보드로 돌아가기
           </button>
-        ))}
-      </div>
-
-      {error && (
-        <div style={{ 
-          padding: '12px', 
-          backgroundColor: '#ffe6e6', 
-          color: '#cc0000', 
-          borderRadius: '4px',
-          marginBottom: '20px',
-        }}>
-          {error}
-        </div>
-      )}
-
-      {filteredItems.length === 0 ? (
-        <div style={{ 
-          textAlign: 'center', 
-          padding: '60px 20px',
-          backgroundColor: '#f5f5f5',
-          borderRadius: '8px',
-        }}>
-          <p style={{ fontSize: '16px', color: '#666' }}>
-            {filter === 'ALL' ? '등록된 분실 신고가 없습니다.' : `${filter} 상태의 분실 신고가 없습니다.`}
-          </p>
-          <button
+          
+          <button 
+            className="btn btn-primary"
             onClick={() => navigate('/lost/create')}
-            style={{
-              marginTop: '20px',
-              padding: '10px 20px',
-              backgroundColor: '#0066cc',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-            }}
           >
-            첫 분실 신고 등록하기
+            <i className="bi bi-plus-circle me-2"></i>
+            새 분실 신고
           </button>
         </div>
-      ) : (
-        <div style={{ display: 'grid', gap: '16px' }}>
-          {filteredItems.map((item) => (
-            <div
-              key={item.id}
-              onClick={() => navigate(`/lost/${item.id}`)}
-              style={{
-                border: '1px solid #ddd',
-                borderRadius: '8px',
-                padding: '20px',
-                cursor: 'pointer',
-                backgroundColor: 'white',
-                transition: 'box-shadow 0.2s',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.boxShadow = 'none';
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px' }}>
-                <div>
-                  <span style={{ 
-                    display: 'inline-block',
-                    padding: '4px 8px',
-                    backgroundColor: '#f0f0f0',
-                    borderRadius: '4px',
-                    fontSize: '12px',
-                    marginRight: '8px',
-                  }}>
-                    {getCategoryLabel(item.category)}
-                  </span>
-                  <StatusBadge status={item.status} />
-                </div>
-                {item.reward && (
-                  <span style={{ 
-                    color: '#ff6600', 
-                    fontWeight: 'bold',
-                    fontSize: '14px',
-                  }}>
-                    사례금 {formatMoney(item.reward)}
-                  </span>
-                )}
-              </div>
+      </nav>
 
-              <h3 style={{ margin: '0 0 8px 0', fontSize: '18px' }}>
-                {item.title}
-              </h3>
-
-              <p style={{ 
-                margin: '0 0 12px 0', 
-                color: '#666',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}>
-                {item.description}
-              </p>
-
-              <div style={{ fontSize: '13px', color: '#999' }}>
-                <span style={{ marginRight: '16px' }}>
-                  📍 {item.lostPlace}
-                </span>
-                <span style={{ marginRight: '16px' }}>
-                  🕐 {formatDateTime(item.lostAt)}
-                </span>
-                <span>
-                  등록: {formatDateTime(item.createdAt)}
-                </span>
-              </div>
-            </div>
-          ))}
+      <div className="container py-4">
+        {/* 타이틀 */}
+        <div className="mb-4">
+          <h2 className="fw-bold mb-2">
+            <i className="bi bi-exclamation-circle text-primary me-2"></i>
+            내 분실 신고
+          </h2>
+          <p className="text-muted mb-0">등록한 분실물 신고를 관리하세요</p>
         </div>
-      )}
+
+        {/* 필터 탭 */}
+        <ul className="nav nav-pills mb-4">
+          {[
+            { key: 'ALL', label: '전체', icon: 'bi-list' },
+            { key: 'OPEN', label: '진행중', icon: 'bi-hourglass-split' },
+            { key: 'MATCHED', label: '매칭됨', icon: 'bi-check-circle' },
+            { key: 'CLOSED', label: '완료', icon: 'bi-check-all' }
+          ].map(({ key, label, icon }) => (
+            <li key={key} className="nav-item">
+              <button
+                className={`nav-link ${filter === key ? 'active' : ''}`}
+                onClick={() => setFilter(key as any)}
+              >
+                <i className={`${icon} me-1`}></i>
+                {label}
+                <span className="badge bg-light text-dark ms-2">
+                  {getStatusCount(key)}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+
+        {/* 에러 메시지 */}
+        {error && (
+          <div className="alert alert-danger d-flex align-items-center mb-4" role="alert">
+            <i className="bi bi-exclamation-triangle-fill me-2"></i>
+            <div>{error}</div>
+          </div>
+        )}
+
+        {/* 목록 */}
+        {filteredItems.length === 0 ? (
+          <div className="card shadow-sm border-0">
+            <div className="card-body text-center py-5">
+              <i className="bi bi-inbox fs-1 text-muted d-block mb-3"></i>
+              <h5 className="text-muted mb-3">
+                {filter === 'ALL' ? '등록된 분실 신고가 없습니다.' : `${
+                  filter === 'OPEN' ? '진행중인' : 
+                  filter === 'MATCHED' ? '매칭된' : '완료된'
+                } 분실 신고가 없습니다.`}
+              </h5>
+              {filter === 'ALL' && (
+                <button
+                  className="btn btn-primary"
+                  onClick={() => navigate('/lost/create')}
+                >
+                  <i className="bi bi-plus-circle me-2"></i>
+                  첫 분실 신고 등록하기
+                </button>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="row g-3">
+            {filteredItems.map((item) => (
+              <div key={item.id} className="col-12">
+                <div 
+                  className="card shadow-sm border-0 card-hover"
+                  onClick={() => navigate(`/lost/${item.id}`)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <div className="card-body">
+                    <div className="row">
+                      <div className="col-12 col-md-8">
+                        {/* 카테고리 & 상태 */}
+                        <div className="d-flex gap-2 mb-2">
+                          <span className="badge bg-light text-dark">
+                            <i className="bi bi-tag me-1"></i>
+                            {getCategoryLabel(item.category)}
+                          </span>
+                          <StatusBadge status={item.status} />
+                        </div>
+
+                        {/* 제목 */}
+                        <h5 className="card-title mb-2">
+                          {item.title}
+                        </h5>
+
+                        {/* 설명 */}
+                        <p className="card-text text-muted small mb-2 text-truncate-2">
+                          {item.description}
+                        </p>
+
+                        {/* 장소 & 날짜 */}
+                        <div className="d-flex gap-3 small text-muted">
+                          <span>
+                            <i className="bi bi-geo-alt me-1"></i>
+                            {item.lostPlace}
+                          </span>
+                          <span>
+                            <i className="bi bi-calendar me-1"></i>
+                            {formatDateTime(item.lostAt)}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="col-12 col-md-4">
+                        <div className="d-flex flex-column h-100 justify-content-between align-items-md-end mt-3 mt-md-0">
+                          {/* 사례금 */}
+                          {item.reward && (
+                            <div className="alert alert-warning py-2 px-3 mb-2">
+                              <i className="bi bi-cash-coin me-1"></i>
+                              <strong>{formatMoney(item.reward)}</strong>
+                            </div>
+                          )}
+
+                          {/* 등록일 */}
+                          <small className="text-muted">
+                            등록: {formatDateTime(item.createdAt)}
+                          </small>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

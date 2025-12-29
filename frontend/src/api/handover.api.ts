@@ -83,4 +83,24 @@ export const handoverApi = {
         const response = await apiClient.post(`/api/handovers/${id}/cancel`, {reason});
         return response.data;
     },
+
+    // Alias methods for compatibility
+    getAll: async (pageable?: Pageable): Promise<Handover[]> => {
+        const defaultPageable = { page: 0, size: 100 };
+        const result = await handoverApi.getAllHandovers(pageable || defaultPageable);
+        return result.content;
+    },
+
+    securityVerify: async (id: number): Promise<Handover> => {
+        return await handoverApi.verify(id);
+    },
+
+    officeApprove: async (id: number): Promise<Handover> => {
+        return await handoverApi.approve(id);
+    },
+
+    updateCourierStatus: async (id: number, status: string): Promise<Handover> => {
+        const response = await apiClient.put(`/api/handovers/${id}/courier-status`, { status });
+        return response.data;
+    },
 };

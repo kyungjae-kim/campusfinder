@@ -9,12 +9,8 @@ export default function ReportManagePage() {
   const navigate = useNavigate();
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [filter, setFilter] = useState<'OPEN' | 'RESOLVED' | 'ALL'>('OPEN');
-
-  const [selectedReport, setSelectedReport] = useState<Report | null>(null);
-  const [adminNote, setAdminNote] = useState('');
-  const [processing, setProcessing] = useState(false);
+  const [filter, setFilter] = useState<'ALL' | 'OPEN' | 'RESOLVED'>('ALL');
+  const [processingId, setProcessingId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchReports();
@@ -23,408 +19,240 @@ export default function ReportManagePage() {
   const fetchReports = async () => {
     try {
       setLoading(true);
-      const response = await adminApi.getReports(undefined, { page: 0, size: 100 });
-      setReports(response.content);
-    } catch (err: any) {
-      setError(err.response?.data?.message || '목록을 불러오는데 실패했습니다.');
+      const data = await adminApi.getReports();
+      setReports(data.content || data);
+    } catch (err) {
+      console.error('Failed to fetch reports:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleResolve = async (action: 'BLIND' | 'IGNORE') => {
-    if (!selectedReport || !adminNote.trim()) {
-      alert('처리 사유를 입력해주세요.');
-      return;
-    }
+  const handleBlind = async (reportId: number, targetType: string, targetId: number) => {
+    if (!confirm('이 콘텐츠를 블라인드 처리하시겠습니까?')) return;
 
+    setProcessingId(reportId);
     try {
-      setProcessing(true);
-
-      // 신고 처리
-      await adminApi.resolveReport(selectedReport.id, {
-        adminNote,
-        action,
-      });
-
-      // 블라인드 처리
-      if (action === 'BLIND') {
-        await adminApi.blindItem(selectedReport.targetType, selectedReport.targetId);
-      }
-
-      await fetchReports();
-      setSelectedReport(null);
-      setAdminNote('');
-      alert(action === 'BLIND' ? '블라인드 처리되었습니다.' : '신고가 무시되었습니다.');
+      await adminApi.blindContent(targetType, targetId);
+      await adminApi.resolveReport(reportId, { adminNote: '블라인드 처리됨', action: 'BLIND' });
+      alert('블라인드 처리되었습니다.');
+      fetchReports();
     } catch (err: any) {
       alert(err.response?.data?.message || '처리에 실패했습니다.');
     } finally {
-      setProcessing(false);
+      setProcessingId(null);
+    }
+  };
+
+  const handleResolve = async (reportId: number) => {
+    if (!confirm('이 신고를 해결 완료로 처리하시겠습니까?')) return;
+
+    setProcessingId(reportId);
+    try {
+      await adminApi.resolveReport(reportId, { adminNote: '문제없음', action: 'IGNORE' });
+      alert('신고가 처리되었습니다.');
+      fetchReports();
+    } catch (err: any) {
+      alert(err.response?.data?.message || '처리에 실패했습니다.');
+    } finally {
+      setProcessingId(null);
     }
   };
 
   const filteredReports = reports.filter(r => {
-    if (filter === 'OPEN') return r.status === 'OPEN';
-    if (filter === 'RESOLVED') return r.status === 'RESOLVED';
-    return true;
+    if (filter === 'ALL') return true;
+    return r.status === filter;
   });
 
-  const openCount = reports.filter(r => r.status === 'OPEN').length;
-  const resolvedCount = reports.filter(r => r.status === 'RESOLVED').length;
+  const getTypeLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      LOST: '분실 신고',
+      FOUND: '습득물',
+      MESSAGE: '메시지',
+    };
+    return labels[type] || type;
+  };
+
+  const getTypeIcon = (type: string) => {
+    const icons: Record<string, string> = {
+      LOST: 'bi-exclamation-circle text-primary',
+      FOUND: 'bi-check-circle text-success',
+      MESSAGE: 'bi-chat-dots text-info',
+    };
+    return icons[type] || 'bi-file-text';
+  };
+
+  const getPendingCount = () => reports.filter(r => r.status === 'OPEN').length;
 
   if (loading) return <Loading />;
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
+    <div className="min-vh-100 bg-light">
       {/* 헤더 */}
-      <div style={{ marginBottom: '20px' }}>
-        <button onClick={() => navigate('/dashboard')} style={{ marginRight: '10px' }}>
-          ← 대시보드
-        </button>
-        <h1 style={{ display: 'inline', marginLeft: '10px' }}>
-          신고 관리
-          {openCount > 0 && (
-            <span style={{
-              marginLeft: '10px',
-              padding: '4px 12px',
-              backgroundColor: '#ff3333',
-              color: 'white',
-              borderRadius: '12px',
-              fontSize: '16px',
-            }}>
-              {openCount}
-            </span>
-          )}
-        </h1>
-      </div>
-
-      {/* 통계 */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: '16px',
-        marginBottom: '20px',
-      }}>
-        <div style={{
-          padding: '20px',
-          border: '2px solid #ff3333',
-          borderRadius: '8px',
-          backgroundColor: '#fff5f5',
-        }}>
-          <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>
-            처리 대기
-          </div>
-          <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#ff3333' }}>
-            {openCount}
-          </div>
+      <nav className="navbar navbar-light bg-white shadow-sm mb-4">
+        <div className="container-fluid">
+          <button 
+            className="btn btn-link text-decoration-none"
+            onClick={() => navigate('/dashboard')}
+          >
+            <i className="bi bi-arrow-left me-2"></i>
+            대시보드로 돌아가기
+          </button>
         </div>
-        <div style={{
-          padding: '20px',
-          border: '2px solid #00cc66',
-          borderRadius: '8px',
-          backgroundColor: '#f0fff4',
-        }}>
-          <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>
-            처리 완료
-          </div>
-          <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#00cc66' }}>
-            {resolvedCount}
-          </div>
+      </nav>
+
+      <div className="container py-4">
+        {/* 타이틀 */}
+        <div className="mb-4">
+          <h2 className="fw-bold mb-2">
+            <i className="bi bi-flag text-danger me-2"></i>
+            신고 관리
+            {getPendingCount() > 0 && (
+              <span className="badge bg-danger ms-2">{getPendingCount()}</span>
+            )}
+          </h2>
+          <p className="text-muted mb-0">사용자가 신고한 콘텐츠를 검토하고 처리하세요</p>
         </div>
-      </div>
 
-      {/* 필터 */}
-      <div style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}>
-        <button
-          onClick={() => setFilter('OPEN')}
-          style={{
-            padding: '8px 16px',
-            border: '1px solid #ddd',
-            backgroundColor: filter === 'OPEN' ? '#ff3333' : 'white',
-            color: filter === 'OPEN' ? 'white' : '#333',
-            borderRadius: '4px',
-            cursor: 'pointer',
-          }}
-        >
-          처리 대기 ({openCount})
-        </button>
-        <button
-          onClick={() => setFilter('RESOLVED')}
-          style={{
-            padding: '8px 16px',
-            border: '1px solid #ddd',
-            backgroundColor: filter === 'RESOLVED' ? '#00cc66' : 'white',
-            color: filter === 'RESOLVED' ? 'white' : '#333',
-            borderRadius: '4px',
-            cursor: 'pointer',
-          }}
-        >
-          처리 완료 ({resolvedCount})
-        </button>
-        <button
-          onClick={() => setFilter('ALL')}
-          style={{
-            padding: '8px 16px',
-            border: '1px solid #ddd',
-            backgroundColor: filter === 'ALL' ? '#0066cc' : 'white',
-            color: filter === 'ALL' ? 'white' : '#333',
-            borderRadius: '4px',
-            cursor: 'pointer',
-          }}
-        >
-          전체
-        </button>
-      </div>
-
-      {error && (
-        <div style={{ 
-          padding: '12px', 
-          backgroundColor: '#ffe6e6', 
-          color: '#cc0000', 
-          borderRadius: '4px',
-          marginBottom: '20px',
-        }}>
-          {error}
-        </div>
-      )}
-
-      {/* 신고 목록 */}
-      {filteredReports.length === 0 ? (
-        <div style={{ 
-          textAlign: 'center', 
-          padding: '60px 20px',
-          backgroundColor: '#f5f5f5',
-          borderRadius: '8px',
-        }}>
-          <p style={{ fontSize: '16px', color: '#666' }}>
-            {filter === 'OPEN' ? '처리할 신고가 없습니다.' : '신고 내역이 없습니다.'}
-          </p>
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gap: '16px' }}>
-          {filteredReports.map((report) => (
-            <div
-              key={report.id}
-              style={{
-                border: report.status === 'OPEN' ? '2px solid #ff3333' : '1px solid #ddd',
-                borderRadius: '8px',
-                padding: '20px',
-                backgroundColor: report.status === 'OPEN' ? '#fff5f5' : 'white',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px' }}>
-                <div>
-                  <span style={{
-                    display: 'inline-block',
-                    padding: '4px 12px',
-                    backgroundColor: report.status === 'OPEN' ? '#ff3333' : '#00cc66',
-                    color: 'white',
-                    borderRadius: '4px',
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                    marginRight: '8px',
-                  }}>
-                    {report.status === 'OPEN' ? '⚠️ 처리 대기' : '✓ 처리 완료'}
-                  </span>
-                  <span style={{
-                    padding: '4px 8px',
-                    backgroundColor: '#f0f0f0',
-                    borderRadius: '4px',
-                    fontSize: '12px',
-                  }}>
-                    {report.targetType === 'LOST' ? '분실 신고' :
-                     report.targetType === 'FOUND' ? '습득물' : '메시지'}
-                  </span>
-                </div>
-                <div style={{ fontSize: '13px', color: '#999' }}>
-                  신고: {formatDateTime(report.createdAt)}
-                </div>
-              </div>
-
-              <div style={{ 
-                padding: '12px',
-                backgroundColor: 'white',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-                marginBottom: '12px',
-              }}>
-                <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
-                  <strong>신고 ID:</strong> #{report.id}
-                </div>
-                <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
-                  <strong>대상:</strong> {report.targetType} #{report.targetId}
-                </div>
-                <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
-                  <strong>신고자:</strong> {report.reporterNickname || `User #${report.reporterId}`}
-                </div>
-                <div style={{ fontSize: '14px', color: '#666' }}>
-                  <strong>사유:</strong> {report.reason}
-                </div>
-              </div>
-
-              {report.status === 'RESOLVED' && report.adminNote && (
-                <div style={{ 
-                  padding: '12px',
-                  backgroundColor: '#e6fff2',
-                  borderRadius: '4px',
-                  marginBottom: '12px',
-                }}>
-                  <div style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '4px' }}>
-                    관리자 처리 내역
-                  </div>
-                  <div style={{ fontSize: '13px', color: '#666' }}>
-                    {report.adminNote}
-                  </div>
-                  {report.resolvedAt && (
-                    <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>
-                      처리 일시: {formatDateTime(report.resolvedAt)}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button
-                  onClick={() => {
-                    const path = report.targetType === 'LOST' ? `/lost/${report.targetId}` :
-                                report.targetType === 'FOUND' ? `/found/${report.targetId}` :
-                                `/handover/${report.targetId}`;
-                    navigate(path);
-                  }}
-                  style={{
-                    flex: 1,
-                    padding: '10px',
-                    backgroundColor: '#0066cc',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  대상 보기
-                </button>
-                {report.status === 'OPEN' && (
-                  <button
-                    onClick={() => {
-                      setSelectedReport(report);
-                      setAdminNote('');
-                    }}
-                    style={{
-                      padding: '10px 20px',
-                      backgroundColor: '#ff9900',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      fontWeight: 'bold',
-                    }}
-                  >
-                    처리하기
-                  </button>
-                )}
-              </div>
-            </div>
+        {/* 필터 */}
+        <ul className="nav nav-pills mb-4">
+          {[
+            { key: 'ALL', label: '전체', icon: 'bi-list' },
+            { key: 'OPEN', label: '대기중', icon: 'bi-hourglass-split' },
+            { key: 'RESOLVED', label: '처리완료', icon: 'bi-check-circle' },
+          ].map(({ key, label, icon }) => (
+            <li key={key} className="nav-item">
+              <button
+                className={`nav-link ${filter === key ? 'active' : ''}`}
+                onClick={() => setFilter(key as any)}
+              >
+                <i className={`${icon} me-1`}></i>
+                {label}
+                <span className="badge bg-light text-dark ms-2">
+                  {key === 'ALL' ? reports.length :
+                   key === 'OPEN' ? getPendingCount() :
+                   reports.filter(r => r.status === 'RESOLVED').length}
+                </span>
+              </button>
+            </li>
           ))}
-        </div>
-      )}
+        </ul>
 
-      {/* 처리 모달 */}
-      {selectedReport && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '8px',
-            padding: '30px',
-            maxWidth: '500px',
-            width: '90%',
-          }}>
-            <h3 style={{ marginTop: 0 }}>신고 처리</h3>
-
-            <div style={{ marginBottom: '20px', padding: '12px', backgroundColor: '#f5f5f5', borderRadius: '4px' }}>
-              <div style={{ fontSize: '14px', marginBottom: '4px' }}>
-                <strong>신고 대상:</strong> {selectedReport.targetType} #{selectedReport.targetId}
-              </div>
-              <div style={{ fontSize: '14px', marginBottom: '4px' }}>
-                <strong>신고 사유:</strong> {selectedReport.reason}
-              </div>
-            </div>
-
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
-                처리 내역
-              </label>
-              <textarea
-                value={adminNote}
-                onChange={(e) => setAdminNote(e.target.value)}
-                placeholder="처리 내역을 입력하세요"
-                rows={4}
-                style={{ width: '100%', padding: '10px', fontSize: '14px', resize: 'vertical' }}
-              />
-            </div>
-
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button
-                onClick={() => handleResolve('BLIND')}
-                disabled={processing}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  backgroundColor: processing ? '#ccc' : '#ff3333',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: processing ? 'not-allowed' : 'pointer',
-                  fontWeight: 'bold',
-                }}
-              >
-                블라인드 처리
-              </button>
-              <button
-                onClick={() => handleResolve('IGNORE')}
-                disabled={processing}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  backgroundColor: processing ? '#ccc' : '#00cc66',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: processing ? 'not-allowed' : 'pointer',
-                  fontWeight: 'bold',
-                }}
-              >
-                무시하기
-              </button>
-              <button
-                onClick={() => {
-                  setSelectedReport(null);
-                  setAdminNote('');
-                }}
-                style={{
-                  padding: '12px 24px',
-                  backgroundColor: '#f5f5f5',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                }}
-              >
-                취소
-              </button>
+        {/* 신고 목록 */}
+        {filteredReports.length === 0 ? (
+          <div className="card shadow-sm border-0">
+            <div className="card-body text-center py-5">
+              <i className="bi bi-inbox fs-1 text-muted d-block mb-3"></i>
+              <h5 className="text-muted mb-3">
+                {filter === 'OPEN' ? '대기중인 신고가 없습니다' : '신고 내역이 없습니다'}
+              </h5>
             </div>
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="row g-3">
+            {filteredReports.map((report) => (
+              <div key={report.id} className="col-12">
+                <div className={`card shadow-sm border-0 ${
+                  report.status === 'OPEN' ? 'border-start border-warning border-4' : ''
+                }`}>
+                  <div className="card-body">
+                    <div className="row">
+                      <div className="col-12 col-md-8">
+                        {/* 타입 & 상태 */}
+                        <div className="d-flex gap-2 mb-3">
+                          <span className="badge bg-light text-dark">
+                            <i className={`${getTypeIcon(report.targetType)} me-1`}></i>
+                            {getTypeLabel(report.targetType)}
+                          </span>
+                          <span className={`badge ${
+                            report.status === 'OPEN' ? 'bg-warning' : 'bg-success'
+                          }`}>
+                            {report.status === 'OPEN' ? '대기중' : '처리완료'}
+                          </span>
+                        </div>
+
+                        {/* 신고 내용 */}
+                        <h5 className="card-title mb-2">
+                          신고 사유: {report.reason}
+                        </h5>
+
+                        {/* 대상 정보 */}
+                        <div className="alert alert-light py-2 px-3 mb-2">
+                          <i className="bi bi-link-45deg me-1"></i>
+                          <strong>대상 ID:</strong> {report.targetType}-{report.targetId}
+                        </div>
+
+                        {/* 신고자 정보 */}
+                        <p className="text-muted small mb-2">
+                          <i className="bi bi-person me-1"></i>
+                          신고자: {report.reporterName || '알 수 없음'}
+                        </p>
+
+                        {/* 신고일 */}
+                        <small className="text-muted">
+                          <i className="bi bi-calendar me-1"></i>
+                          신고일: {formatDateTime(report.createdAt)}
+                        </small>
+
+                        {report.resolvedAt && (
+                          <div className="mt-2">
+                            <small className="text-success">
+                              <i className="bi bi-check-circle me-1"></i>
+                              처리일: {formatDateTime(report.resolvedAt)}
+                            </small>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 액션 버튼 */}
+                      <div className="col-12 col-md-4">
+                        <div className="d-flex flex-column gap-2 h-100 justify-content-center">
+                          {report.status === 'OPEN' && (
+                            <>
+                              <button
+                                className="btn btn-danger"
+                                onClick={() => handleBlind(report.id, report.targetType, report.targetId)}
+                                disabled={processingId === report.id}
+                              >
+                                {processingId === report.id ? (
+                                  <>
+                                    <span className="spinner-border spinner-border-sm me-2"></span>
+                                    처리 중...
+                                  </>
+                                ) : (
+                                  <>
+                                    <i className="bi bi-eye-slash me-2"></i>
+                                    블라인드 처리
+                                  </>
+                                )}
+                              </button>
+                              <button
+                                className="btn btn-outline-success"
+                                onClick={() => handleResolve(report.id)}
+                                disabled={processingId === report.id}
+                              >
+                                <i className="bi bi-check-circle me-2"></i>
+                                문제없음 (해결)
+                              </button>
+                            </>
+                          )}
+                          
+                          {report.status === 'RESOLVED' && (
+                            <div className="alert alert-success mb-0">
+                              <i className="bi bi-check-circle-fill me-2"></i>
+                              처리 완료
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -10,264 +10,199 @@ export default function ApprovalManagePage() {
   const navigate = useNavigate();
   const [handovers, setHandovers] = useState<Handover[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [filter, setFilter] = useState<'VERIFIED' | 'APPROVED' | 'ALL'>('VERIFIED');
 
   useEffect(() => {
-    fetchHandovers();
+    fetchApprovalQueue();
   }, []);
 
-  const fetchHandovers = async () => {
+  const fetchApprovalQueue = async () => {
     try {
       setLoading(true);
-      const response = await handoverApi.getAllHandovers({ page: 0, size: 100 });
-      setHandovers(response.content);
-    } catch (err: any) {
-      setError(err.response?.data?.message || '목록을 불러오는데 실패했습니다.');
+      // 보안 승인 대기중인 인계 목록
+      const data = await handoverApi.getAll({ page: 0, size: 100 });
+      setHandovers(data.filter((h: Handover) => 
+        h.status === 'VERIFIED_BY_SECURITY' || h.status === 'ACCEPTED_BY_FINDER'
+      ));
+    } catch (err) {
+      console.error('Failed to fetch approval queue:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredHandovers = handovers.filter(h => {
-    if (filter === 'VERIFIED') {
-      return h.status === 'VERIFIED_BY_SECURITY';
-    } else if (filter === 'APPROVED') {
-      return h.status === 'APPROVED_BY_OFFICE' || 
-             h.status === 'SCHEDULED' || 
-             h.status === 'COMPLETED';
+  const handleApprove = async (id: number) => {
+    try {
+      await handoverApi.officeApprove(id);
+      alert('인계가 승인되었습니다.');
+      fetchApprovalQueue();
+    } catch (err: any) {
+      alert(err.response?.data?.message || '승인에 실패했습니다.');
     }
-    return h.status === 'VERIFIED_BY_SECURITY' || 
-           h.status === 'APPROVED_BY_OFFICE' || 
-           h.status === 'SCHEDULED' || 
-           h.status === 'COMPLETED';
-  });
+  };
 
-  const verifiedCount = handovers.filter(h => h.status === 'VERIFIED_BY_SECURITY').length;
-  const approvedCount = handovers.filter(h => 
-    h.status === 'APPROVED_BY_OFFICE' || 
-    h.status === 'SCHEDULED' || 
-    h.status === 'COMPLETED'
-  ).length;
+  const handleReject = async (id: number) => {
+    const reason = prompt('거절 사유를 입력하세요:');
+    if (!reason) return;
+
+    try {
+      await handoverApi.reject(id, reason);
+      alert('인계가 거절되었습니다.');
+      fetchApprovalQueue();
+    } catch (err: any) {
+      alert(err.response?.data?.message || '거절에 실패했습니다.');
+    }
+  };
 
   if (loading) return <Loading />;
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
+    <div className="min-vh-100 bg-light">
       {/* 헤더 */}
-      <div style={{ marginBottom: '20px' }}>
-        <button onClick={() => navigate('/dashboard')} style={{ marginRight: '10px' }}>
-          ← 대시보드
-        </button>
-        <h1 style={{ display: 'inline', marginLeft: '10px' }}>승인 관리</h1>
-      </div>
-
-      {/* 통계 카드 */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: '16px',
-        marginBottom: '20px',
-      }}>
-        <div style={{
-          padding: '20px',
-          border: '2px solid #9933ff',
-          borderRadius: '8px',
-          backgroundColor: '#f9f5ff',
-        }}>
-          <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>
-            검수 완료 (관리실 승인 대기)
-          </div>
-          <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#9933ff' }}>
-            {verifiedCount}
-          </div>
+      <nav className="navbar navbar-light bg-white shadow-sm mb-4">
+        <div className="container-fluid">
+          <button 
+            className="btn btn-link text-decoration-none"
+            onClick={() => navigate('/dashboard')}
+          >
+            <i className="bi bi-arrow-left me-2"></i>
+            대시보드로 돌아가기
+          </button>
         </div>
-        <div style={{
-          padding: '20px',
-          border: '2px solid #00cc66',
-          borderRadius: '8px',
-          backgroundColor: '#f0fff4',
-        }}>
-          <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>
-            최종 승인 완료
-          </div>
-          <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#00cc66' }}>
-            {approvedCount}
+      </nav>
+
+      <div className="container py-4">
+        {/* 타이틀 */}
+        <div className="mb-4">
+          <h2 className="fw-bold mb-2">
+            <i className="bi bi-check-square text-purple me-2" style={{ color: '#9933ff' }}></i>
+            승인 관리
+            {handovers.length > 0 && (
+              <span className="badge ms-2" style={{ backgroundColor: '#9933ff' }}>{handovers.length}</span>
+            )}
+          </h2>
+          <p className="text-muted mb-0">검수 완료된 인계 요청을 최종 승인합니다</p>
+        </div>
+
+        {/* 안내 메시지 */}
+        <div className="alert alert-info d-flex align-items-start mb-4" role="alert">
+          <i className="bi bi-info-circle me-2 flex-shrink-0"></i>
+          <div className="small">
+            <strong>승인 절차 안내</strong><br />
+            보안 검수가 완료된 인계 요청을 최종 승인합니다.
+            승인 시 양측의 연락처가 공개되며 인계 일정을 잡을 수 있습니다.
           </div>
         </div>
-      </div>
 
-      {/* 필터 */}
-      <div style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}>
-        <button
-          onClick={() => setFilter('VERIFIED')}
-          style={{
-            padding: '8px 16px',
-            border: '1px solid #ddd',
-            backgroundColor: filter === 'VERIFIED' ? '#9933ff' : 'white',
-            color: filter === 'VERIFIED' ? 'white' : '#333',
-            borderRadius: '4px',
-            cursor: 'pointer',
-          }}
-        >
-          검수 완료 ({verifiedCount})
-        </button>
-        <button
-          onClick={() => setFilter('APPROVED')}
-          style={{
-            padding: '8px 16px',
-            border: '1px solid #ddd',
-            backgroundColor: filter === 'APPROVED' ? '#00cc66' : 'white',
-            color: filter === 'APPROVED' ? 'white' : '#333',
-            borderRadius: '4px',
-            cursor: 'pointer',
-          }}
-        >
-          승인 완료 ({approvedCount})
-        </button>
-        <button
-          onClick={() => setFilter('ALL')}
-          style={{
-            padding: '8px 16px',
-            border: '1px solid #ddd',
-            backgroundColor: filter === 'ALL' ? '#0066cc' : 'white',
-            color: filter === 'ALL' ? 'white' : '#333',
-            borderRadius: '4px',
-            cursor: 'pointer',
-          }}
-        >
-          전체
-        </button>
-      </div>
-
-      {error && (
-        <div style={{ 
-          padding: '12px', 
-          backgroundColor: '#ffe6e6', 
-          color: '#cc0000', 
-          borderRadius: '4px',
-          marginBottom: '20px',
-        }}>
-          {error}
-        </div>
-      )}
-
-      {/* 인계 목록 */}
-      {filteredHandovers.length === 0 ? (
-        <div style={{ 
-          textAlign: 'center', 
-          padding: '60px 20px',
-          backgroundColor: '#f5f5f5',
-          borderRadius: '8px',
-        }}>
-          <p style={{ fontSize: '16px', color: '#666' }}>
-            {filter === 'VERIFIED' ? '검수 완료된 인계가 없습니다.' : 
-             filter === 'APPROVED' ? '승인 완료된 인계가 없습니다.' : 
-             '인계 내역이 없습니다.'}
-          </p>
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gap: '16px' }}>
-          {filteredHandovers.map((handover) => (
-            <div
-              key={handover.id}
-              onClick={() => navigate(`/handover/${handover.id}`)}
-              style={{
-                border: '1px solid #ddd',
-                borderRadius: '8px',
-                padding: '20px',
-                backgroundColor: 'white',
-                cursor: 'pointer',
-                transition: 'box-shadow 0.2s',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.boxShadow = 'none';
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px' }}>
-                <div>
-                  <StatusBadge status={handover.status} />
-                </div>
-                <div style={{ fontSize: '13px', color: '#999' }}>
-                  요청: {formatDateTime(handover.createdAt)}
-                </div>
-              </div>
-
-              <div style={{ 
-                padding: '12px',
-                backgroundColor: '#f9f9f9',
-                borderRadius: '4px',
-                marginBottom: '12px',
-              }}>
-                <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
-                  <strong>인계 ID:</strong> #{handover.id}
-                </div>
-                <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
-                  <strong>인계 방법:</strong> {
-                    handover.method === 'MEET' ? '대면 인계' :
-                    handover.method === 'OFFICE' ? '관리실 인계' : '배송 인계'
-                  }
-                </div>
-              </div>
-
-              {handover.verifiedBySecurityAt && (
-                <div style={{ 
-                  padding: '8px 12px',
-                  backgroundColor: '#f2e6ff',
-                  borderRadius: '4px',
-                  fontSize: '13px',
-                  color: '#9933ff',
-                  marginBottom: '8px',
-                }}>
-                  ✓ 보안 검수 완료: {formatDateTime(handover.verifiedBySecurityAt)}
-                </div>
-              )}
-
-              {handover.approvedByOfficeAt && (
-                <div style={{ 
-                  padding: '8px 12px',
-                  backgroundColor: '#e6fff2',
-                  borderRadius: '4px',
-                  fontSize: '13px',
-                  color: '#00cc66',
-                  marginBottom: '8px',
-                }}>
-                  ✓ 관리실 승인 완료: {formatDateTime(handover.approvedByOfficeAt)}
-                </div>
-              )}
-
-              {handover.scheduleAt && (
-                <div style={{ 
-                  padding: '8px 12px',
-                  backgroundColor: '#fff4e6',
-                  borderRadius: '4px',
-                  fontSize: '13px',
-                  color: '#ff9900',
-                  marginBottom: '8px',
-                }}>
-                  📅 일정: {formatDateTime(handover.scheduleAt)}
-                  {handover.meetPlace && ` | 📍 ${handover.meetPlace}`}
-                </div>
-              )}
-
-              {handover.completedAt && (
-                <div style={{ 
-                  padding: '8px 12px',
-                  backgroundColor: '#e6f2ff',
-                  borderRadius: '4px',
-                  fontSize: '13px',
-                  color: '#0066cc',
-                }}>
-                  🎉 인계 완료: {formatDateTime(handover.completedAt)}
-                </div>
-              )}
+        {/* 목록 */}
+        {handovers.length === 0 ? (
+          <div className="card shadow-sm border-0">
+            <div className="card-body text-center py-5">
+              <i className="bi bi-check-circle fs-1 text-success d-block mb-3"></i>
+              <h5 className="text-success mb-3">승인할 항목이 없습니다</h5>
+              <p className="text-muted small">모든 인계 요청이 처리되었습니다</p>
             </div>
-          ))}
-        </div>
-      )}
+          </div>
+        ) : (
+          <div className="row g-3">
+            {handovers.map((handover) => (
+              <div key={handover.id} className="col-12">
+                <div className="card shadow-sm border-0 border-start border-4" style={{ borderColor: '#9933ff !important' }}>
+                  <div className="card-body">
+                    <div className="row">
+                      <div className="col-12 col-md-8">
+                        {/* 상태 */}
+                        <div className="mb-3">
+                          <StatusBadge status={handover.status} />
+                          <span className="badge bg-light text-dark ms-2">
+                            <i className="bi bi-truck me-1"></i>
+                            {handover.method === 'MEET' ? '대면 인계' :
+                             handover.method === 'OFFICE' ? '관리실 인계' : '배송 인계'}
+                          </span>
+                          {handover.status === 'VERIFIED_BY_SECURITY' && (
+                            <span className="badge bg-success ms-2">
+                              <i className="bi bi-shield-check me-1"></i>
+                              검수 완료
+                            </span>
+                          )}
+                        </div>
+
+                        {/* 정보 */}
+                        <h5 className="card-title mb-2">
+                          분실물: {handover.lostTitle || '정보 없음'}
+                        </h5>
+                        <p className="text-muted mb-2">
+                          <i className="bi bi-box me-1"></i>
+                          습득물: {handover.foundTitle || '정보 없음'}
+                        </p>
+
+                        {/* 당사자 정보 */}
+                        <div className="alert alert-light py-2 px-3 mb-2">
+                          <div className="row">
+                            <div className="col-6">
+                              <small className="text-muted d-block">요청자 (분실자)</small>
+                              <strong>{handover.requesterName || '알 수 없음'}</strong>
+                            </div>
+                            <div className="col-6">
+                              <small className="text-muted d-block">응답자 (습득자)</small>
+                              <strong>{handover.responderName || '알 수 없음'}</strong>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 일정 정보 */}
+                        {handover.scheduleAt && (
+                          <div className="alert alert-info py-2 px-3 mb-2">
+                            <i className="bi bi-calendar-event me-1"></i>
+                            <strong>예정 일정:</strong> {formatDateTime(handover.scheduleAt)}
+                            {handover.meetPlace && (
+                              <div className="mt-1">
+                                <i className="bi bi-geo-alt me-1"></i>
+                                {handover.meetPlace}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        <small className="text-muted">
+                          요청일: {formatDateTime(handover.createdAt)}
+                        </small>
+                      </div>
+
+                      {/* 액션 */}
+                      <div className="col-12 col-md-4">
+                        <div className="d-flex flex-column gap-2 h-100 justify-content-center">
+                          <button
+                            className="btn text-white"
+                            style={{ backgroundColor: '#9933ff' }}
+                            onClick={() => handleApprove(handover.id)}
+                          >
+                            <i className="bi bi-check-circle me-2"></i>
+                            최종 승인
+                          </button>
+                          <button
+                            className="btn btn-outline-danger"
+                            onClick={() => handleReject(handover.id)}
+                          >
+                            <i className="bi bi-x-circle me-2"></i>
+                            거절
+                          </button>
+                          <button
+                            className="btn btn-outline-primary"
+                            onClick={() => navigate(`/handover/${handover.id}`)}
+                          >
+                            <i className="bi bi-eye me-2"></i>
+                            상세보기
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

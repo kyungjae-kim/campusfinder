@@ -51,4 +51,10 @@ export const foundApi = {
     });
     return response.data;
   },
+
+  // 상태 업데이트
+  updateStatus: async (id: number, status: string): Promise<FoundItem> => {
+    const response = await apiClient.put(`/api/found/${id}/status`, { status });
+    return response.data;
+  },
 };

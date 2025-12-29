@@ -1,15 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { notificationApi } from '@/api/notification.api';
-import type { Notification, NotificationType } from '@/types/notification.types';
+import type { Notification } from '@/types/notification.types';
 import Loading from '@/components/common/Loading';
-import { formatRelativeTime } from '@/utils/formatters';
+import { formatDateTime } from '@/utils/formatters';
 
 export default function NotificationPage() {
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [filter, setFilter] = useState<'ALL' | 'UNREAD'>('ALL');
 
   useEffect(() => {
@@ -21,8 +20,8 @@ export default function NotificationPage() {
       setLoading(true);
       const data = await notificationApi.getMy();
       setNotifications(data);
-    } catch (err: any) {
-      setError(err.response?.data?.message || '알림을 불러오는데 실패했습니다.');
+    } catch (err) {
+      console.error('Failed to fetch notifications:', err);
     } finally {
       setLoading(false);
     }
@@ -32,7 +31,7 @@ export default function NotificationPage() {
     try {
       await notificationApi.markAsRead(id);
       setNotifications(prev =>
-        prev.map(n => (n.id === id ? { ...n, isRead: true } : n))
+        prev.map(n => n.id === id ? { ...n, isRead: true } : n)
       );
     } catch (err) {
       console.error('Failed to mark as read:', err);
@@ -41,45 +40,14 @@ export default function NotificationPage() {
 
   const handleMarkAllAsRead = async () => {
     try {
-      await notificationApi.markAllAsRead();
+      await Promise.all(
+        notifications
+          .filter(n => !n.isRead)
+          .map(n => notificationApi.markAsRead(n.id))
+      );
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-    } catch (err: any) {
-      alert(err.response?.data?.message || '모두 읽음 처리에 실패했습니다.');
-    }
-  };
-
-  const handleDelete = async (id: number) => {
-    if (!confirm('이 알림을 삭제하시겠습니까?')) return;
-
-    try {
-      await notificationApi.delete(id);
-      setNotifications(prev => prev.filter(n => n.id !== id));
-    } catch (err: any) {
-      alert(err.response?.data?.message || '삭제에 실패했습니다.');
-    }
-  };
-
-  const handleNotificationClick = (notification: Notification) => {
-    // 읽지 않은 알림이면 읽음 처리
-    if (!notification.isRead) {
-      handleMarkAsRead(notification.id);
-    }
-
-    // 관련 페이지로 이동
-    if (notification.relatedType && notification.relatedId) {
-      switch (notification.relatedType) {
-        case 'LOST':
-          navigate(`/lost/${notification.relatedId}`);
-          break;
-        case 'FOUND':
-          navigate(`/found/${notification.relatedId}`);
-          break;
-        case 'HANDOVER':
-          navigate(`/handover/${notification.relatedId}`);
-          break;
-        default:
-          break;
-      }
+    } catch (err) {
+      console.error('Failed to mark all as read:', err);
     }
   };
 
@@ -90,235 +58,165 @@ export default function NotificationPage() {
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
+  const getNotificationIcon = (type: string) => {
+    const icons: Record<string, string> = {
+      LOST_CREATED: 'bi-exclamation-circle text-primary',
+      FOUND_CREATED: 'bi-check-circle text-success',
+      MATCH_FOUND: 'bi-link-45deg text-info',
+      HANDOVER_REQUESTED: 'bi-send text-warning',
+      HANDOVER_ACCEPTED: 'bi-check-square text-success',
+      HANDOVER_REJECTED: 'bi-x-square text-danger',
+      HANDOVER_COMPLETED: 'bi-check-all text-success',
+      SECURITY_VERIFIED: 'bi-shield-check text-primary',
+      ADMIN_ACTION: 'bi-shield-exclamation text-danger',
+    };
+    return icons[type] || 'bi-bell text-muted';
+  };
+
   if (loading) return <Loading />;
 
   return (
-    <div style={{ maxWidth: '900px', margin: '0 auto', padding: '20px' }}>
+    <div className="min-vh-100 bg-light">
       {/* 헤더 */}
-      <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <button onClick={() => navigate('/dashboard')} style={{ marginRight: '10px' }}>
-            ← 대시보드
+      <nav className="navbar navbar-light bg-white shadow-sm mb-4">
+        <div className="container-fluid">
+          <button 
+            className="btn btn-link text-decoration-none"
+            onClick={() => navigate('/dashboard')}
+          >
+            <i className="bi bi-arrow-left me-2"></i>
+            대시보드로 돌아가기
           </button>
-          <h1 style={{ display: 'inline', marginLeft: '10px' }}>
-            알림함
+
+          {unreadCount > 0 && (
+            <button 
+              className="btn btn-outline-primary"
+              onClick={handleMarkAllAsRead}
+            >
+              <i className="bi bi-check-all me-2"></i>
+              모두 읽음 처리
+            </button>
+          )}
+        </div>
+      </nav>
+
+      <div className="container py-4">
+        {/* 타이틀 */}
+        <div className="mb-4">
+          <h2 className="fw-bold mb-2">
+            <i className="bi bi-bell me-2"></i>
+            알림
             {unreadCount > 0 && (
-              <span style={{
-                marginLeft: '10px',
-                padding: '4px 12px',
-                backgroundColor: '#ff3333',
-                color: 'white',
-                borderRadius: '12px',
-                fontSize: '16px',
-              }}>
+              <span className="badge bg-danger ms-2">{unreadCount}</span>
+            )}
+          </h2>
+          <p className="text-muted mb-0">최신 알림을 확인하세요</p>
+        </div>
+
+        {/* 필터 */}
+        <ul className="nav nav-pills mb-4">
+          <li className="nav-item">
+            <button
+              className={`nav-link ${filter === 'ALL' ? 'active' : ''}`}
+              onClick={() => setFilter('ALL')}
+            >
+              <i className="bi bi-list me-1"></i>
+              전체
+              <span className="badge bg-light text-dark ms-2">
+                {notifications.length}
+              </span>
+            </button>
+          </li>
+          <li className="nav-item">
+            <button
+              className={`nav-link ${filter === 'UNREAD' ? 'active' : ''}`}
+              onClick={() => setFilter('UNREAD')}
+            >
+              <i className="bi bi-circle-fill me-1" style={{ fontSize: '8px' }}></i>
+              읽지 않음
+              <span className="badge bg-light text-dark ms-2">
                 {unreadCount}
               </span>
-            )}
-          </h1>
-        </div>
-        {unreadCount > 0 && (
-          <button
-            onClick={handleMarkAllAsRead}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: '#0066cc',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-            }}
-          >
-            모두 읽음
-          </button>
+            </button>
+          </li>
+        </ul>
+
+        {/* 알림 목록 */}
+        {filteredNotifications.length === 0 ? (
+          <div className="card shadow-sm border-0">
+            <div className="card-body text-center py-5">
+              <i className="bi bi-bell-slash fs-1 text-muted d-block mb-3"></i>
+              <h5 className="text-muted mb-3">
+                {filter === 'UNREAD' ? '읽지 않은 알림이 없습니다' : '알림이 없습니다'}
+              </h5>
+            </div>
+          </div>
+        ) : (
+          <div className="list-group">
+            {filteredNotifications.map((notification) => (
+              <div
+                key={notification.id}
+                className={`list-group-item list-group-item-action ${
+                  !notification.isRead ? 'bg-light' : ''
+                }`}
+                onClick={() => {
+                  if (!notification.isRead) {
+                    handleMarkAsRead(notification.id);
+                  }
+                }}
+                style={{ cursor: 'pointer' }}
+              >
+                <div className="d-flex align-items-start">
+                  {/* 아이콘 */}
+                  <div className="me-3 flex-shrink-0">
+                    <div 
+                      className={`rounded-circle d-flex align-items-center justify-content-center ${
+                        !notification.isRead ? 'bg-primary bg-opacity-10' : 'bg-light'
+                      }`}
+                      style={{ width: '48px', height: '48px' }}
+                    >
+                      <i className={`${getNotificationIcon(notification.type)} fs-5`}></i>
+                    </div>
+                  </div>
+
+                  {/* 내용 */}
+                  <div className="flex-grow-1">
+                    <div className="d-flex justify-content-between align-items-start mb-1">
+                      <h6 className={`mb-1 ${!notification.isRead ? 'fw-bold' : ''}`}>
+                        {notification.title}
+                        {!notification.isRead && (
+                          <span className="badge bg-primary ms-2" style={{ fontSize: '10px' }}>
+                            NEW
+                          </span>
+                        )}
+                      </h6>
+                      <small className="text-muted ms-2">
+                        {formatDateTime(notification.createdAt)}
+                      </small>
+                    </div>
+                    <p className={`mb-0 ${!notification.isRead ? 'text-dark' : 'text-muted'}`}>
+                      {notification.message}
+                    </p>
+                  </div>
+
+                  {/* 읽음 버튼 */}
+                  {!notification.isRead && (
+                    <button
+                      className="btn btn-sm btn-outline-primary ms-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleMarkAsRead(notification.id);
+                      }}
+                    >
+                      <i className="bi bi-check"></i>
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
-
-      {/* 필터 */}
-      <div style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}>
-        <button
-          onClick={() => setFilter('ALL')}
-          style={{
-            padding: '8px 16px',
-            border: '1px solid #ddd',
-            backgroundColor: filter === 'ALL' ? '#0066cc' : 'white',
-            color: filter === 'ALL' ? 'white' : '#333',
-            borderRadius: '4px',
-            cursor: 'pointer',
-          }}
-        >
-          전체 ({notifications.length})
-        </button>
-        <button
-          onClick={() => setFilter('UNREAD')}
-          style={{
-            padding: '8px 16px',
-            border: '1px solid #ddd',
-            backgroundColor: filter === 'UNREAD' ? '#0066cc' : 'white',
-            color: filter === 'UNREAD' ? 'white' : '#333',
-            borderRadius: '4px',
-            cursor: 'pointer',
-          }}
-        >
-          읽지 않음 ({unreadCount})
-        </button>
-      </div>
-
-      {error && (
-        <div style={{ 
-          padding: '12px', 
-          backgroundColor: '#ffe6e6', 
-          color: '#cc0000', 
-          borderRadius: '4px',
-          marginBottom: '20px',
-        }}>
-          {error}
-        </div>
-      )}
-
-      {/* 알림 목록 */}
-      {filteredNotifications.length === 0 ? (
-        <div style={{ 
-          textAlign: 'center', 
-          padding: '60px 20px',
-          backgroundColor: '#f5f5f5',
-          borderRadius: '8px',
-        }}>
-          <p style={{ fontSize: '16px', color: '#666' }}>
-            {filter === 'ALL' ? '알림이 없습니다.' : '읽지 않은 알림이 없습니다.'}
-          </p>
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gap: '12px' }}>
-          {filteredNotifications.map((notification) => (
-            <NotificationItem
-              key={notification.id}
-              notification={notification}
-              onClick={() => handleNotificationClick(notification)}
-              onDelete={() => handleDelete(notification.id)}
-            />
-          ))}
-        </div>
-      )}
     </div>
   );
-}
-
-// 알림 아이템 컴포넌트
-interface NotificationItemProps {
-  notification: Notification;
-  onClick: () => void;
-  onDelete: () => void;
-}
-
-function NotificationItem({ notification, onClick, onDelete }: NotificationItemProps) {
-  const config = getNotificationConfig(notification.type);
-
-  return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'start',
-        gap: '16px',
-        padding: '16px',
-        border: notification.isRead ? '1px solid #ddd' : '2px solid #0066cc',
-        borderRadius: '8px',
-        backgroundColor: notification.isRead ? 'white' : '#f0f7ff',
-        cursor: 'pointer',
-        transition: 'box-shadow 0.2s',
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.boxShadow = 'none';
-      }}
-    >
-      {/* 아이콘 */}
-      <div
-        style={{
-          width: '48px',
-          height: '48px',
-          borderRadius: '50%',
-          backgroundColor: config.bg,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '24px',
-          flexShrink: 0,
-        }}
-      >
-        {config.icon}
-      </div>
-
-      {/* 내용 */}
-      <div style={{ flex: 1 }} onClick={onClick}>
-        {!notification.isRead && (
-          <span style={{
-            display: 'inline-block',
-            width: '8px',
-            height: '8px',
-            borderRadius: '50%',
-            backgroundColor: '#ff3333',
-            marginRight: '8px',
-          }} />
-        )}
-        <h4 style={{ 
-          margin: '0 0 8px 0', 
-          fontSize: '16px',
-          fontWeight: notification.isRead ? 'normal' : 'bold',
-        }}>
-          {notification.title}
-        </h4>
-        <p style={{ 
-          margin: '0 0 8px 0', 
-          color: '#666',
-          fontSize: '14px',
-          lineHeight: '1.5',
-        }}>
-          {notification.message}
-        </p>
-        <div style={{ fontSize: '12px', color: '#999' }}>
-          {formatRelativeTime(notification.createdAt)}
-        </div>
-      </div>
-
-      {/* 삭제 버튼 */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onDelete();
-        }}
-        style={{
-          padding: '8px',
-          backgroundColor: 'transparent',
-          border: 'none',
-          color: '#999',
-          cursor: 'pointer',
-          fontSize: '18px',
-        }}
-        title="삭제"
-      >
-        ✕
-      </button>
-    </div>
-  );
-}
-
-// 알림 타입별 설정
-function getNotificationConfig(type: NotificationType) {
-  const configs: Record<NotificationType, { icon: string; bg: string }> = {
-    LOST_CREATED: { icon: '📢', bg: '#e6f2ff' },
-    FOUND_CREATED: { icon: '🎉', bg: '#e6fff2' },
-    MATCHING_FOUND: { icon: '🔍', bg: '#fff4e6' },
-    HANDOVER_REQUESTED: { icon: '📨', bg: '#f0e6ff' },
-    HANDOVER_ACCEPTED: { icon: '✅', bg: '#e6fff2' },
-    HANDOVER_REJECTED: { icon: '❌', bg: '#ffe6e6' },
-    HANDOVER_SCHEDULED: { icon: '📅', bg: '#fff4e6' },
-    HANDOVER_COMPLETED: { icon: '🎊', bg: '#e6fff9' },
-    SECURITY_VERIFIED: { icon: '🔒', bg: '#f2e6ff' },
-    OFFICE_APPROVED: { icon: '✓', bg: '#e6f2ff' },
-    ADMIN_ACTION: { icon: '⚠️', bg: '#ffe6e6' },
-  };
-
-  return configs[type] || { icon: '📬', bg: '#f5f5f5' };
 }
