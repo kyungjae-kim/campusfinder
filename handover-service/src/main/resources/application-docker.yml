@@ -16,3 +16,5 @@ services:
     url: http://found-service:8084
   notification-service:
     url: http://notification-service:8088
+  user-service:
+    url: http://user-service:8082

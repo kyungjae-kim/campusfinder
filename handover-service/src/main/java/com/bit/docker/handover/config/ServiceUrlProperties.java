@@ -14,6 +14,7 @@ public class ServiceUrlProperties {
     private ServiceUrl lostService;
     private ServiceUrl foundService;
     private ServiceUrl notificationService;
+    private ServiceUrl userService;
     
     @Getter
     @Setter

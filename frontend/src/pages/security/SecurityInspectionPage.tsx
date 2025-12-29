@@ -1,14 +1,23 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { handoverApi } from '@/api/handover.api';
+import { lostApi } from '@/api/lost.api';
+import { foundApi } from '@/api/found.api';
 import type { Handover } from '@/types/handover.types';
+import type { LostItem } from '@/types/lost.types';
+import type { FoundItem } from '@/types/found.types';
 import Loading from '@/components/common/Loading';
 import StatusBadge from '@/components/common/StatusBadge';
 import { formatDateTime } from '@/utils/formatters';
 
+interface EnrichedHandover extends Handover {
+  lostItem?: LostItem;
+  foundItem?: FoundItem;
+}
+
 export default function SecurityInspectionPage() {
   const navigate = useNavigate();
-  const [handovers, setHandovers] = useState<Handover[]>([]);
+  const [handovers, setHandovers] = useState<EnrichedHandover[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -20,7 +29,28 @@ export default function SecurityInspectionPage() {
       setLoading(true);
       // 보안 검수 대기 중인 인계 목록
       const data = await handoverApi.getAll({ page: 0, size: 100 });
-      setHandovers(data.filter((h: Handover) => h.status === 'ACCEPTED_BY_FINDER'));
+      const filtered = data.filter((h: Handover) => h.status === 'ACCEPTED_BY_FINDER');
+      
+      // 각 handover에 대해 lost와 found 정보 가져오기
+      const enrichedData = await Promise.all(
+        filtered.map(async (handover) => {
+          try {
+            const [lostItem, foundItem] = await Promise.all([
+              lostApi.getById(handover.lostId).catch(() => null),
+              foundApi.getById(handover.foundId).catch(() => null),
+            ]);
+            return {
+              ...handover,
+              lostItem,
+              foundItem,
+            };
+          } catch {
+            return handover;
+          }
+        })
+      );
+      
+      setHandovers(enrichedData);
     } catch (err) {
       console.error('Failed to fetch inspection queue:', err);
     } finally {
@@ -106,18 +136,20 @@ export default function SecurityInspectionPage() {
 
                         {/* 정보 */}
                         <h5 className="card-title mb-2">
-                          분실물: {handover.lostTitle || '정보 없음'}
+                          분실물: {handover.lostItem?.title || handover.lostTitle || `#${handover.lostId}`}
                         </h5>
                         <p className="text-muted mb-2">
                           <i className="bi bi-box me-1"></i>
-                          습득물: {handover.foundTitle || '정보 없음'}
+                          습득물: {handover.foundItem?.title || handover.foundTitle || `#${handover.foundId}`}
                         </p>
 
                         {/* 카테고리 경고 */}
-                        <div className="alert alert-danger py-2 px-3 mb-2">
-                          <i className="bi bi-exclamation-triangle me-1"></i>
-                          <strong>고가품/위험물 검수 필요</strong>
-                        </div>
+                        {handover.foundItem && (
+                          <div className="alert alert-danger py-2 px-3 mb-2">
+                            <i className="bi bi-exclamation-triangle me-1"></i>
+                            <strong>카테고리: {handover.foundItem.category}</strong> - 고가품/위험물 검수 필요
+                          </div>
+                        )}
 
                         <small className="text-muted">
                           요청일: {formatDateTime(handover.createdAt)}

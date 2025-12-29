@@ -249,35 +249,60 @@ export default function DashboardPage() {
 
           {/* 관리실 메뉴 */}
           {user.role === 'OFFICE' && (
-            <div className="col-12 col-md-6 col-lg-4">
-              <div className="card h-100 card-hover border-warning">
-                <div className="card-body">
-                  <h5 className="card-title">
-                    <i className="bi bi-building text-warning me-2"></i>
-                    관리실
-                  </h5>
-                  <p className="card-text text-muted small">
-                    접수 대기 및 보관 관리
-                  </p>
-                  <div className="d-grid gap-2">
-                    <button
-                      className="btn btn-warning"
-                      onClick={() => navigate('/office/queue')}
-                    >
-                      <i className="bi bi-clock-history me-2"></i>
-                      접수 대기 목록
-                    </button>
-                    <button
-                      className="btn btn-outline-warning"
-                      onClick={() => navigate('/office/storage')}
-                    >
-                      <i className="bi bi-box-seam me-2"></i>
-                      보관 관리
-                    </button>
+            <>
+              <div className="col-12 col-md-6 col-lg-4">
+                <div className="card h-100 card-hover border-warning">
+                  <div className="card-body">
+                    <h5 className="card-title">
+                      <i className="bi bi-building text-warning me-2"></i>
+                      관리실
+                    </h5>
+                    <p className="card-text text-muted small">
+                      접수 대기 및 보관 관리
+                    </p>
+                    <div className="d-grid gap-2">
+                      <button
+                        className="btn btn-warning"
+                        onClick={() => navigate('/office/queue')}
+                      >
+                        <i className="bi bi-clock-history me-2"></i>
+                        접수 대기 목록
+                      </button>
+                      <button
+                        className="btn btn-outline-warning"
+                        onClick={() => navigate('/office/storage')}
+                      >
+                        <i className="bi bi-box-seam me-2"></i>
+                        보관 관리
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+
+              <div className="col-12 col-md-6 col-lg-4">
+                <div className="card h-100 card-hover border-warning">
+                  <div className="card-body">
+                    <h5 className="card-title">
+                      <i className="bi bi-check-square text-warning me-2"></i>
+                      인계 승인 관리
+                    </h5>
+                    <p className="card-text text-muted small">
+                      검수 완료된 인계 요청 최종 승인
+                    </p>
+                    <div className="d-grid">
+                      <button
+                        className="btn btn-warning"
+                        onClick={() => navigate('/security/approval')}
+                      >
+                        <i className="bi bi-check-square me-2"></i>
+                        승인 관리
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
           )}
 
           {/* 보안 메뉴 */}
@@ -290,9 +315,9 @@ export default function DashboardPage() {
                     보안
                   </h5>
                   <p className="card-text text-muted small">
-                    고가품 검수 및 승인 관리
+                    고가품 검수 관리
                   </p>
-                  <div className="d-grid gap-2">
+                  <div className="d-grid">
                     <button
                       className="btn text-white"
                       style={{ backgroundColor: '#9933ff' }}
@@ -300,13 +325,6 @@ export default function DashboardPage() {
                     >
                       <i className="bi bi-search me-2"></i>
                       검수 목록
-                    </button>
-                    <button
-                      className="btn btn-outline-secondary"
-                      onClick={() => navigate('/security/approval')}
-                    >
-                      <i className="bi bi-check-square me-2"></i>
-                      승인 관리
                     </button>
                   </div>
                 </div>

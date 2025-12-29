@@ -108,7 +108,39 @@ public class HandoverService {
             handoverId
         );
         
+        // 카테고리 확인 후 SECURITY 검수 필요 시 알림 전송
+        FoundItemDTO foundItem = getFoundItemById(handover.getFoundId());
+        if (foundItem != null && SECURITY_CHECK_CATEGORIES.contains(foundItem.getCategory())) {
+            // SECURITY 역할을 가진 모든 사용자에게 알림 (User 서비스 호출 필요)
+            sendSecurityCheckNotification(handoverId, foundItem.getCategory());
+        }
+
         return HandoverResponse.from(handover);
+    }
+
+    // SECURITY에게 검수 필요 알림 전송
+    private void sendSecurityCheckNotification(Long handoverId, String category) {
+        try {
+            // User 서비스에서 SECURITY 역할 사용자 목록 조회
+            String url = serviceUrlProperties.getUserService().getUrl() + "/api/users/by-role/SECURITY";
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> securityUsers = restTemplate.getForObject(url, List.class);
+
+            if (securityUsers != null) {
+                for (Map<String, Object> user : securityUsers) {
+                    Long userId = ((Number) user.get("id")).longValue();
+                    sendNotification(
+                        userId,
+                        "SECURITY_CHECK_REQUIRED",
+                        "보안 검수 필요",
+                        "인계 요청 #" + handoverId + " - " + category + " 카테고리 검수가 필요합니다.",
+                        handoverId
+                    );
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("SECURITY 알림 전송 실패: " + e.getMessage());
+        }
     }
     
     // 인계 요청 거절
@@ -354,7 +386,7 @@ public class HandoverService {
     // 전체 목록 (관리자/OFFICE용)
     public Page<HandoverResponse> getAllHandovers(Pageable pageable) {
         return handoverRepository.findAll(pageable)
-            .map(HandoverResponse::from);
+            .map(this::enrichHandoverResponse);
     }
 
     // 기간별 완료 통계 (Admin에서 호출)
@@ -371,6 +403,61 @@ public class HandoverService {
     
     // ==================== 헬퍼 메서드 ====================
     
+    // HandoverResponse에 외부 정보 추가
+    @SuppressWarnings("unchecked")
+    private HandoverResponse enrichHandoverResponse(Handover handover) {
+        HandoverResponse response = HandoverResponse.from(handover);
+        
+        try {
+            // Lost 정보 조회
+            String lostUrl = serviceUrlProperties.getLostService().getUrl() + "/api/lost/" + handover.getLostId();
+            Map<String, Object> lostItem = restTemplate.getForObject(lostUrl, Map.class);
+            if (lostItem != null) {
+                response.setLostTitle((String) lostItem.get("title"));
+            }
+        } catch (Exception e) {
+            System.err.println("Lost 정보 조회 실패: " + e.getMessage());
+            response.setLostTitle("분실물 #" + handover.getLostId());
+        }
+        
+        try {
+            // Found 정보 조회
+            FoundItemDTO foundItem = getFoundItemById(handover.getFoundId());
+            if (foundItem != null) {
+                response.setFoundTitle(foundItem.getTitle());
+            }
+        } catch (Exception e) {
+            System.err.println("Found 정보 조회 실패: " + e.getMessage());
+            response.setFoundTitle("습득물 #" + handover.getFoundId());
+        }
+        
+        try {
+            // User 정보 조회
+            String userUrl = serviceUrlProperties.getUserService().getUrl() + "/api/users/" + handover.getRequesterId();
+            Map<String, Object> requester = restTemplate.getForObject(userUrl, Map.class);
+            if (requester != null) {
+                response.setRequesterName((String) requester.get("nickname"));
+            }
+        } catch (Exception e) {
+            System.err.println("Requester 정보 조회 실패: " + e.getMessage());
+            response.setRequesterName("사용자 #" + handover.getRequesterId());
+        }
+        
+        try {
+            // User 정보 조회
+            String userUrl = serviceUrlProperties.getUserService().getUrl() + "/api/users/" + handover.getResponderId();
+            Map<String, Object> responder = restTemplate.getForObject(userUrl, Map.class);
+            if (responder != null) {
+                response.setResponderName((String) responder.get("nickname"));
+            }
+        } catch (Exception e) {
+            System.err.println("Responder 정보 조회 실패: " + e.getMessage());
+            response.setResponderName("사용자 #" + handover.getResponderId());
+        }
+        
+        return response;
+    }
+    
     // Found 서비스에서 습득물 조회
     private FoundItemDTO getFoundItemById(Long foundId) {
         try {
@@ -382,7 +469,7 @@ public class HandoverService {
         }
     }
     
-    // Lost 서비스 상태 업데이트
+    // Lost 서비스 상태 업데이트 (인계 완료 시 CLOSED로 변경)
     private void updateLostItemStatus(Long lostId, String status) {
         try {
             String url = serviceUrlProperties.getLostService().getUrl() + "/api/lost/" + lostId + "/status";
@@ -394,7 +481,7 @@ public class HandoverService {
         }
     }
     
-    // Found 서비스 상태 업데이트
+    // Found 서비스 상태 업데이트 (인계 완료 시 HANDED_OVER로 변경)
     private void updateFoundItemStatus(Long foundId, String status) {
         try {
             String url = serviceUrlProperties.getFoundService().getUrl() + "/api/found/" + foundId + "/status";

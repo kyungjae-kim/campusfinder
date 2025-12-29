@@ -1,15 +1,18 @@
 package com.bit.docker.user.service;
 
-import com.bit.docker.user.dto.request.UserRegisterRequest;
 import com.bit.docker.user.dto.response.UserResponse;
 import com.bit.docker.user.model.User;
+import com.bit.docker.user.model.UserRole;
 import com.bit.docker.user.model.UserStatus;
 import com.bit.docker.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -51,5 +54,28 @@ public class UserService {
         User user = userRepository.findById(userId)
             .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
         return user.getStatus() == UserStatus.BLOCKED;
+    }
+
+    // 역할별 사용자 조회 (다른 서비스에서 호출)
+    public Page<UserResponse> getUsersByRole(String role, Pageable pageable) {
+        // String을 UserRole enum으로 변환
+        UserRole userRole;
+        try {
+            userRole = UserRole.valueOf(role.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("유효하지 않은 역할입니다: " + role);
+        }
+        
+        // Repository에서 제공하는 findByRole 사용
+        List<User> users = userRepository.findByRole(userRole);
+        
+        // List를 Page로 변환
+        int start = (int) pageable.getOffset();
+        int end = Math.min(start + pageable.getPageSize(), users.size());
+        List<UserResponse> content = users.subList(start, Math.min(end, users.size())).stream()
+            .map(UserResponse::from)
+            .toList();
+        
+        return new PageImpl<>(content, pageable, users.size());
     }
 }

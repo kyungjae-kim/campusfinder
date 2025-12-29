@@ -1,9 +1,7 @@
 package com.bit.docker.user.controller;
 
-import com.bit.docker.user.dto.request.UserRegisterRequest;
 import com.bit.docker.user.dto.response.UserResponse;
 import com.bit.docker.user.service.UserService;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -49,5 +47,15 @@ public class UserController {
     public ResponseEntity<Boolean> isUserBlocked(@PathVariable Long userId) {
         boolean blocked = userService.isUserBlocked(userId);
         return ResponseEntity.ok(blocked);
+    }
+
+    // 역할별 사용자 조회 (다른 서비스에서 호출)
+    @GetMapping("/by-role/{role}")
+    public ResponseEntity<Page<UserResponse>> getUsersByRole(
+        @PathVariable String role,
+        Pageable pageable
+    ) {
+        Page<UserResponse> response = userService.getUsersByRole(role, pageable);
+        return ResponseEntity.ok(response);
     }
 }

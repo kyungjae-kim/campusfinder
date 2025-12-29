@@ -337,10 +337,12 @@ export default function HandoverDetailPage() {
         handleCancel={handleCancel}
       />
 
-      {/* 채팅 */}
-      <div style={{ marginTop: '30px' }}>
-        <ChatBox handoverId={handover.id} currentUserId={currentUser?.id || 0} />
-      </div>
+      {/* 채팅 - LOSER, FINDER, OFFICE만 참여 가능 */}
+      {currentUser && ['LOSER', 'FINDER', 'OFFICE', 'ADMIN'].includes(currentUser.role) && (
+        <div style={{ marginTop: '30px' }}>
+          <ChatBox handoverId={handover.id} currentUserId={currentUser?.id || 0} />
+        </div>
+      )}
     </div>
   );
 }
@@ -523,7 +525,7 @@ function HandoverActions(props: HandoverActionsProps) {
       )}
 
       {/* 일정 확정 버튼 */}
-      {(handover.status === 'ACCEPTED_BY_FINDER' || handover.status === 'APPROVED_BY_OFFICE') && !handover.scheduleAt && (
+      {handover.status === 'APPROVED_BY_OFFICE' && !handover.scheduleAt && (
         <div style={{ marginBottom: '20px' }}>
           <button
             onClick={() => setShowScheduleForm(true)}

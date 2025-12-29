@@ -66,11 +66,48 @@ export default function NotificationPage() {
       HANDOVER_REQUESTED: 'bi-send text-warning',
       HANDOVER_ACCEPTED: 'bi-check-square text-success',
       HANDOVER_REJECTED: 'bi-x-square text-danger',
+      HANDOVER_SCHEDULED: 'bi-calendar-check text-info',
       HANDOVER_COMPLETED: 'bi-check-all text-success',
+      HANDOVER_VERIFIED: 'bi-shield-check text-primary',
+      HANDOVER_APPROVED: 'bi-check-circle text-success',
+      SECURITY_CHECK_REQUIRED: 'bi-shield-exclamation text-warning',
       SECURITY_VERIFIED: 'bi-shield-check text-primary',
       ADMIN_ACTION: 'bi-shield-exclamation text-danger',
     };
     return icons[type] || 'bi-bell text-muted';
+  };
+
+  const handleNotificationClick = (notification: Notification) => {
+    // 읽음 처리
+    if (!notification.isRead) {
+      handleMarkAsRead(notification.id);
+    }
+
+    // 관련 페이지로 이동
+    if (notification.relatedId) {
+      switch (notification.type) {
+        case 'LOST_CREATED':
+          if (notification.relatedType === 'LOST') {
+            navigate(`/lost/${notification.relatedId}`);
+          }
+          break;
+        case 'FOUND_CREATED':
+          if (notification.relatedType === 'FOUND') {
+            navigate(`/found/${notification.relatedId}`);
+          }
+          break;
+        case 'HANDOVER_REQUESTED':
+        case 'HANDOVER_ACCEPTED':
+        case 'HANDOVER_REJECTED':
+        case 'HANDOVER_SCHEDULED':
+        case 'HANDOVER_COMPLETED':
+        case 'HANDOVER_VERIFIED':
+        case 'HANDOVER_APPROVED':
+        case 'SECURITY_CHECK_REQUIRED':
+          navigate(`/handover/${notification.relatedId}`);
+          break;
+      }
+    }
   };
 
   if (loading) return <Loading />;
@@ -159,11 +196,7 @@ export default function NotificationPage() {
                 className={`list-group-item list-group-item-action ${
                   !notification.isRead ? 'bg-light' : ''
                 }`}
-                onClick={() => {
-                  if (!notification.isRead) {
-                    handleMarkAsRead(notification.id);
-                  }
-                }}
+                onClick={() => handleNotificationClick(notification)}
                 style={{ cursor: 'pointer' }}
               >
                 <div className="d-flex align-items-start">

@@ -1,14 +1,23 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { handoverApi } from '@/api/handover.api';
+import { lostApi } from '@/api/lost.api';
+import { foundApi } from '@/api/found.api';
 import type { Handover } from '@/types/handover.types';
+import type { LostItem } from '@/types/lost.types';
+import type { FoundItem } from '@/types/found.types';
 import Loading from '@/components/common/Loading';
 import StatusBadge from '@/components/common/StatusBadge';
 import { formatDateTime } from '@/utils/formatters';
 
+interface EnrichedHandover extends Handover {
+  lostItem?: LostItem;
+  foundItem?: FoundItem;
+}
+
 export default function ApprovalManagePage() {
   const navigate = useNavigate();
-  const [handovers, setHandovers] = useState<Handover[]>([]);
+  const [handovers, setHandovers] = useState<EnrichedHandover[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -20,9 +29,30 @@ export default function ApprovalManagePage() {
       setLoading(true);
       // 보안 승인 대기중인 인계 목록
       const data = await handoverApi.getAll({ page: 0, size: 100 });
-      setHandovers(data.filter((h: Handover) => 
+      const filtered = data.filter((h: Handover) => 
         h.status === 'VERIFIED_BY_SECURITY' || h.status === 'ACCEPTED_BY_FINDER'
-      ));
+      );
+      
+      // 각 handover에 대해 lost와 found 정보 가져오기
+      const enrichedData = await Promise.all(
+        filtered.map(async (handover) => {
+          try {
+            const [lostItem, foundItem] = await Promise.all([
+              lostApi.getById(handover.lostId).catch(() => null),
+              foundApi.getById(handover.foundId).catch(() => null),
+            ]);
+            return {
+              ...handover,
+              lostItem,
+              foundItem,
+            };
+          } catch {
+            return handover;
+          }
+        })
+      );
+      
+      setHandovers(enrichedData);
     } catch (err) {
       console.error('Failed to fetch approval queue:', err);
     } finally {
@@ -74,10 +104,10 @@ export default function ApprovalManagePage() {
         {/* 타이틀 */}
         <div className="mb-4">
           <h2 className="fw-bold mb-2">
-            <i className="bi bi-check-square text-purple me-2" style={{ color: '#9933ff' }}></i>
-            승인 관리
+            <i className="bi bi-check-square text-warning me-2"></i>
+            인계 승인 관리 (관리실)
             {handovers.length > 0 && (
-              <span className="badge ms-2" style={{ backgroundColor: '#9933ff' }}>{handovers.length}</span>
+              <span className="badge bg-warning ms-2">{handovers.length}</span>
             )}
           </h2>
           <p className="text-muted mb-0">검수 완료된 인계 요청을 최종 승인합니다</p>
@@ -88,7 +118,7 @@ export default function ApprovalManagePage() {
           <i className="bi bi-info-circle me-2 flex-shrink-0"></i>
           <div className="small">
             <strong>승인 절차 안내</strong><br />
-            보안 검수가 완료된 인계 요청을 최종 승인합니다.
+            보안 검수가 완료되거나 검수가 불필요한 인계 요청을 최종 승인합니다.
             승인 시 양측의 연락처가 공개되며 인계 일정을 잡을 수 있습니다.
           </div>
         </div>
@@ -106,7 +136,7 @@ export default function ApprovalManagePage() {
           <div className="row g-3">
             {handovers.map((handover) => (
               <div key={handover.id} className="col-12">
-                <div className="card shadow-sm border-0 border-start border-4" style={{ borderColor: '#9933ff !important' }}>
+                <div className="card shadow-sm border-0 border-start border-warning border-4">
                   <div className="card-body">
                     <div className="row">
                       <div className="col-12 col-md-8">
@@ -128,11 +158,11 @@ export default function ApprovalManagePage() {
 
                         {/* 정보 */}
                         <h5 className="card-title mb-2">
-                          분실물: {handover.lostTitle || '정보 없음'}
+                          분실물: {handover.lostItem?.title || handover.lostTitle || `#${handover.lostId}`}
                         </h5>
                         <p className="text-muted mb-2">
                           <i className="bi bi-box me-1"></i>
-                          습득물: {handover.foundTitle || '정보 없음'}
+                          습득물: {handover.foundItem?.title || handover.foundTitle || `#${handover.foundId}`}
                         </p>
 
                         {/* 당사자 정보 */}
@@ -140,28 +170,14 @@ export default function ApprovalManagePage() {
                           <div className="row">
                             <div className="col-6">
                               <small className="text-muted d-block">요청자 (분실자)</small>
-                              <strong>{handover.requesterName || '알 수 없음'}</strong>
+                              <strong>{handover.requesterName || `사용자 #${handover.requesterId}`}</strong>
                             </div>
                             <div className="col-6">
                               <small className="text-muted d-block">응답자 (습득자)</small>
-                              <strong>{handover.responderName || '알 수 없음'}</strong>
+                              <strong>{handover.responderName || `사용자 #${handover.responderId}`}</strong>
                             </div>
                           </div>
                         </div>
-
-                        {/* 일정 정보 */}
-                        {handover.scheduleAt && (
-                          <div className="alert alert-info py-2 px-3 mb-2">
-                            <i className="bi bi-calendar-event me-1"></i>
-                            <strong>예정 일정:</strong> {formatDateTime(handover.scheduleAt)}
-                            {handover.meetPlace && (
-                              <div className="mt-1">
-                                <i className="bi bi-geo-alt me-1"></i>
-                                {handover.meetPlace}
-                              </div>
-                            )}
-                          </div>
-                        )}
 
                         <small className="text-muted">
                           요청일: {formatDateTime(handover.createdAt)}
@@ -172,8 +188,7 @@ export default function ApprovalManagePage() {
                       <div className="col-12 col-md-4">
                         <div className="d-flex flex-column gap-2 h-100 justify-content-center">
                           <button
-                            className="btn text-white"
-                            style={{ backgroundColor: '#9933ff' }}
+                            className="btn btn-warning"
                             onClick={() => handleApprove(handover.id)}
                           >
                             <i className="bi bi-check-circle me-2"></i>
