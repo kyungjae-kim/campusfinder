@@ -110,12 +110,28 @@ export default function HandoverDetailPage() {
 
     try {
       setProcessing(true);
-      await handoverApi.schedule(handover.id, scheduleAt, meetPlace);
+      
+      // datetime-local의 값을 ISO 형식으로 변환
+      // 입력: "2025-12-29T14:30"
+      // 출력: "2025-12-29T14:30:00"
+      const formattedDate = scheduleAt.includes('T') ? scheduleAt + ':00' : scheduleAt;
+      
+      console.log('Scheduling with:', {
+        handoverId: handover.id,
+        scheduleAt: formattedDate,
+        meetPlace: meetPlace
+      });
+      
+      await handoverApi.schedule(handover.id, formattedDate, meetPlace);
       await fetchData(handover.id);
       alert('일정이 확정되었습니다!');
       setShowScheduleForm(false);
+      setScheduleAt('');
+      setMeetPlace('');
     } catch (err: any) {
-      alert(err.response?.data?.message || '일정 확정에 실패했습니다.');
+      console.error('Schedule error:', err);
+      const errorMessage = err.response?.data?.message || err.message || '일정 확정에 실패했습니다.';
+      alert(`일정 확정 실패: ${errorMessage}`);
     } finally {
       setProcessing(false);
     }

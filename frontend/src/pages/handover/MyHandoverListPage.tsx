@@ -1,14 +1,23 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { handoverApi } from '@/api/handover.api';
+import { lostApi } from '@/api/lost.api';
+import { foundApi } from '@/api/found.api';
 import type { Handover } from '@/types/handover.types';
+import type { LostItem } from '@/types/lost.types';
+import type { FoundItem } from '@/types/found.types';
 import Loading from '@/components/common/Loading';
 import StatusBadge from '@/components/common/StatusBadge';
 import { formatDateTime } from '@/utils/formatters';
 
+interface EnrichedHandover extends Handover {
+  lostItem?: LostItem;
+  foundItem?: FoundItem;
+}
+
 export default function MyHandoverListPage() {
   const navigate = useNavigate();
-  const [handovers, setHandovers] = useState<Handover[]>([]);
+  const [handovers, setHandovers] = useState<EnrichedHandover[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filter, setFilter] = useState<string>('ALL');
@@ -21,7 +30,27 @@ export default function MyHandoverListPage() {
     try {
       setLoading(true);
       const data = await handoverApi.getMyRequests();
-      setHandovers(data);
+      
+      // 각 handover에 대해 lost와 found 정보 가져오기
+      const enrichedData = await Promise.all(
+        data.map(async (handover) => {
+          try {
+            const [lostItem, foundItem] = await Promise.all([
+              lostApi.getById(handover.lostId).catch(() => null),
+              foundApi.getById(handover.foundId).catch(() => null),
+            ]);
+            return {
+              ...handover,
+              lostItem,
+              foundItem,
+            };
+          } catch {
+            return handover;
+          }
+        })
+      );
+      
+      setHandovers(enrichedData);
     } catch (err: any) {
       setError(err.response?.data?.message || '목록을 불러오는데 실패했습니다.');
     } finally {
@@ -131,19 +160,19 @@ export default function MyHandoverListPage() {
 
                         {/* 분실물 정보 */}
                         <h5 className="card-title mb-2">
-                          분실물: {handover.lostTitle || '정보 없음'}
+                          분실물: {handover.lostItem?.title || handover.lostTitle || `#${handover.lostId}`}
                         </h5>
 
                         {/* 습득물 정보 */}
                         <p className="text-muted mb-2">
                           <i className="bi bi-box me-1"></i>
-                          습득물: {handover.foundTitle || '정보 없음'}
+                          습득물: {handover.foundItem?.title || handover.foundTitle || `#${handover.foundId}`}
                         </p>
 
                         {/* 응답자 정보 (마스킹) */}
                         <p className="text-muted small mb-2">
                           <i className="bi bi-person me-1"></i>
-                          습득자: {handover.responderName || '알 수 없음'}
+                          습득자: {handover.responderName || `사용자 #${handover.responderId}`}
                         </p>
 
                         {/* 일정 정보 */}

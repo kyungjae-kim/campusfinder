@@ -52,27 +52,30 @@ export default function LostItemDetailPage() {
   };
 
   if (loading) return <Loading />;
+  
   if (error) {
     return (
-      <div style={{ maxWidth: '800px', margin: '40px auto', padding: '20px' }}>
-        <div style={{ 
-          padding: '20px', 
-          backgroundColor: '#ffe6e6', 
-          color: '#cc0000', 
-          borderRadius: '8px',
-          textAlign: 'center',
-        }}>
-          {error}
+      <div className="min-vh-100 bg-light d-flex align-items-center justify-content-center">
+        <div className="container">
+          <div className="row justify-content-center">
+            <div className="col-12 col-md-6">
+              <div className="alert alert-danger text-center">
+                <i className="bi bi-exclamation-triangle fs-1 d-block mb-3"></i>
+                <h5>{error}</h5>
+              </div>
+              <div className="d-grid">
+                <button className="btn btn-primary" onClick={() => navigate('/lost/list')}>
+                  <i className="bi bi-arrow-left me-2"></i>
+                  목록으로 돌아가기
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-        <button 
-          onClick={() => navigate('/lost/list')}
-          style={{ marginTop: '20px', padding: '10px 20px' }}
-        >
-          목록으로 돌아가기
-        </button>
       </div>
     );
   }
+  
   if (!item) return null;
 
   const userStr = localStorage.getItem('user');
@@ -80,144 +83,226 @@ export default function LostItemDetailPage() {
   const isOwner = currentUser && currentUser.id === item.userId;
 
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '20px' }}>
+    <div className="min-vh-100 bg-light">
       {/* 헤더 */}
-      <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <button onClick={() => navigate('/lost/list')}>
-          ← 목록으로
-        </button>
-        {isOwner && item.status === 'OPEN' && (
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button
-              onClick={() => navigate(`/lost/${item.id}/edit`)}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: '#0066cc',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-              }}
-            >
-              수정
-            </button>
-            <button
-              onClick={handleDelete}
-              disabled={deleting}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: deleting ? '#ccc' : '#cc0000',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: deleting ? 'not-allowed' : 'pointer',
-              }}
-            >
-              {deleting ? '삭제 중...' : '삭제'}
-            </button>
-          </div>
-        )}
-      </div>
+      <nav className="navbar navbar-light bg-white shadow-sm mb-4">
+        <div className="container-fluid">
+          <button 
+            className="btn btn-link text-decoration-none"
+            onClick={() => navigate('/lost/list')}
+          >
+            <i className="bi bi-arrow-left me-2"></i>
+            목록으로 돌아가기
+          </button>
 
-      {/* 본문 */}
-      <div style={{ 
-        border: '1px solid #ddd', 
-        borderRadius: '8px', 
-        padding: '30px',
-        backgroundColor: 'white',
-      }}>
-        {/* 카테고리 & 상태 */}
-        <div style={{ marginBottom: '16px' }}>
-          <span style={{ 
-            display: 'inline-block',
-            padding: '6px 12px',
-            backgroundColor: '#f0f0f0',
-            borderRadius: '4px',
-            fontSize: '14px',
-            marginRight: '10px',
-          }}>
-            {getCategoryLabel(item.category)}
-          </span>
-          <StatusBadge status={item.status} />
+          {isOwner && item.status === 'OPEN' && (
+            <div className="d-flex gap-2">
+              <button
+                className="btn btn-outline-primary"
+                onClick={() => navigate(`/lost/${item.id}/edit`)}
+              >
+                <i className="bi bi-pencil me-2"></i>
+                수정
+              </button>
+              <button
+                className="btn btn-outline-danger"
+                onClick={handleDelete}
+                disabled={deleting}
+              >
+                {deleting ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm me-2"></span>
+                    삭제 중...
+                  </>
+                ) : (
+                  <>
+                    <i className="bi bi-trash me-2"></i>
+                    삭제
+                  </>
+                )}
+              </button>
+            </div>
+          )}
         </div>
+      </nav>
 
-        {/* 제목 */}
-        <h1 style={{ margin: '0 0 20px 0', fontSize: '28px' }}>
-          {item.title}
-        </h1>
+      <div className="container py-4">
+        <div className="row justify-content-center">
+          <div className="col-12 col-lg-10">
+            {/* 메인 카드 */}
+            <div className="card shadow-sm border-0 mb-4">
+              <div className="card-body p-4">
+                {/* 카테고리 & 상태 */}
+                <div className="d-flex gap-2 mb-3">
+                  <span className="badge bg-light text-dark fs-6">
+                    <i className="bi bi-tag me-1"></i>
+                    {getCategoryLabel(item.category)}
+                  </span>
+                  <StatusBadge status={item.status} />
+                </div>
 
-        {/* 사례금 */}
-        {item.reward && (
-          <div style={{ 
-            padding: '16px',
-            backgroundColor: '#fff4e6',
-            borderLeft: '4px solid #ff9900',
-            marginBottom: '20px',
-            borderRadius: '4px',
-          }}>
-            <span style={{ fontSize: '14px', color: '#666', marginRight: '10px' }}>
-              사례금
-            </span>
-            <span style={{ fontSize: '20px', fontWeight: 'bold', color: '#ff6600' }}>
-              {formatMoney(item.reward)}
-            </span>
+                {/* 제목 */}
+                <h2 className="fw-bold mb-3">
+                  {item.title}
+                </h2>
+
+                {/* 사례금 */}
+                {item.reward && (
+                  <div className="alert alert-warning d-flex align-items-center mb-4">
+                    <i className="bi bi-cash-coin fs-3 me-3"></i>
+                    <div>
+                      <div className="small text-muted">사례금</div>
+                      <div className="fs-4 fw-bold">{formatMoney(item.reward)}</div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 정보 그리드 */}
+                <div className="card bg-light border-0 mb-4">
+                  <div className="card-body">
+                    <div className="row g-3">
+                      <div className="col-12 col-md-6">
+                        <div className="d-flex align-items-center">
+                          <i className="bi bi-calendar-event text-primary fs-4 me-3"></i>
+                          <div>
+                            <small className="text-muted d-block">분실 일시</small>
+                            <strong>{formatDateTime(item.lostAt)}</strong>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="col-12 col-md-6">
+                        <div className="d-flex align-items-center">
+                          <i className="bi bi-geo-alt text-danger fs-4 me-3"></i>
+                          <div>
+                            <small className="text-muted d-block">분실 장소</small>
+                            <strong>{item.lostPlace}</strong>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="col-12 col-md-6">
+                        <div className="d-flex align-items-center">
+                          <i className="bi bi-clock text-info fs-4 me-3"></i>
+                          <div>
+                            <small className="text-muted d-block">등록 일시</small>
+                            <strong>{formatDateTime(item.createdAt)}</strong>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="col-12 col-md-6">
+                        <div className="d-flex align-items-center">
+                          <i className="bi bi-person text-success fs-4 me-3"></i>
+                          <div>
+                            <small className="text-muted d-block">분실물 ID</small>
+                            <strong>#{item.id}</strong>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 상세 설명 */}
+                <div className="mb-4">
+                  <h5 className="fw-bold mb-3">
+                    <i className="bi bi-card-text me-2"></i>
+                    상세 설명
+                  </h5>
+                  <div className="card bg-light border-0">
+                    <div className="card-body">
+                      <p className="mb-0" style={{ whiteSpace: 'pre-wrap', lineHeight: '1.8' }}>
+                        {item.description}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 매칭 후보 찾기 버튼 */}
+                {isOwner && item.status === 'OPEN' && (
+                  <div className="d-grid">
+                    <button
+                      className="btn btn-success btn-lg"
+                      onClick={() => navigate(`/matching?lostId=${item.id}`)}
+                    >
+                      <i className="bi bi-search me-2"></i>
+                      매칭 후보 찾기
+                    </button>
+                    <small className="text-muted text-center mt-2">
+                      등록된 습득물 중에서 이 분실물과 유사한 항목을 찾습니다
+                    </small>
+                  </div>
+                )}
+
+                {/* 이미 매칭된 경우 */}
+                {item.status === 'MATCHED' && (
+                  <div className="alert alert-info d-flex align-items-center">
+                    <i className="bi bi-check-circle fs-4 me-3"></i>
+                    <div>
+                      <strong>매칭 완료</strong><br />
+                      <small>이 분실물은 습득물과 매칭되었습니다. 인계 진행 상황을 확인하세요.</small>
+                    </div>
+                  </div>
+                )}
+
+                {/* 완료된 경우 */}
+                {item.status === 'CLOSED' && (
+                  <div className="alert alert-success d-flex align-items-center">
+                    <i className="bi bi-check-all fs-4 me-3"></i>
+                    <div>
+                      <strong>인계 완료</strong><br />
+                      <small>이 분실물의 인계가 완료되었습니다.</small>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 추가 액션 카드 */}
+            {isOwner && (
+              <div className="card shadow-sm border-0">
+                <div className="card-header bg-light">
+                  <h6 className="mb-0">
+                    <i className="bi bi-gear me-2"></i>
+                    관리 옵션
+                  </h6>
+                </div>
+                <div className="card-body">
+                  <div className="row g-2">
+                    <div className="col-12 col-md-4">
+                      <button 
+                        className="btn btn-outline-primary w-100"
+                        onClick={() => navigate('/handover/my-requests')}
+                      >
+                        <i className="bi bi-send me-2"></i>
+                        내 인계 요청
+                      </button>
+                    </div>
+                    <div className="col-12 col-md-4">
+                      <button 
+                        className="btn btn-outline-info w-100"
+                        onClick={() => navigate('/notifications')}
+                      >
+                        <i className="bi bi-bell me-2"></i>
+                        알림 확인
+                      </button>
+                    </div>
+                    <div className="col-12 col-md-4">
+                      <button 
+                        className="btn btn-outline-secondary w-100"
+                        onClick={() => navigate('/lost/list')}
+                      >
+                        <i className="bi bi-list me-2"></i>
+                        내 목록
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-        )}
-
-        {/* 정보 */}
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: '120px 1fr',
-          gap: '16px',
-          marginBottom: '30px',
-          padding: '20px',
-          backgroundColor: '#f9f9f9',
-          borderRadius: '8px',
-        }}>
-          <div style={{ fontWeight: 'bold', color: '#666' }}>분실 일시</div>
-          <div>{formatDateTime(item.lostAt)}</div>
-
-          <div style={{ fontWeight: 'bold', color: '#666' }}>분실 장소</div>
-          <div>{item.lostPlace}</div>
-
-          <div style={{ fontWeight: 'bold', color: '#666' }}>등록 일시</div>
-          <div>{formatDateTime(item.createdAt)}</div>
         </div>
-
-        {/* 상세 설명 */}
-        <div>
-          <h3 style={{ marginBottom: '12px', fontSize: '18px' }}>상세 설명</h3>
-          <div style={{ 
-            padding: '20px',
-            backgroundColor: '#f9f9f9',
-            borderRadius: '8px',
-            lineHeight: '1.6',
-            whiteSpace: 'pre-wrap',
-          }}>
-            {item.description}
-          </div>
-        </div>
-
-        {/* 매칭 후보 보기 버튼 (나중에 구현) */}
-        {isOwner && item.status === 'OPEN' && (
-          <div style={{ marginTop: '30px', textAlign: 'center' }}>
-            <button
-              onClick={() => navigate(`/lost/${item.id}/matching`)}
-              style={{
-                padding: '14px 30px',
-                fontSize: '16px',
-                fontWeight: 'bold',
-                backgroundColor: '#00cc66',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-              }}
-            >
-              🔍 매칭 후보 찾기
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );

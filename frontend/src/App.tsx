@@ -57,12 +57,14 @@ function App() {
         <Route path="/lost/create" element={<PrivateRoute><LostItemCreatePage /></PrivateRoute>} />
         <Route path="/lost/list" element={<PrivateRoute><LostItemListPage /></PrivateRoute>} />
         <Route path="/lost/:id" element={<PrivateRoute><LostItemDetailPage /></PrivateRoute>} />
-        <Route path="/lost/:lostId/matching" element={<PrivateRoute><MatchingListPage /></PrivateRoute>} />
 
         {/* 습득물 */}
         <Route path="/found/create" element={<PrivateRoute><FoundItemCreatePage /></PrivateRoute>} />
         <Route path="/found/list" element={<PrivateRoute><FoundItemListPage /></PrivateRoute>} />
         <Route path="/found/:id" element={<PrivateRoute><FoundItemDetailPage /></PrivateRoute>} />
+
+        {/* 매칭 */}
+        <Route path="/matching" element={<PrivateRoute><MatchingListPage /></PrivateRoute>} />
 
         {/* 인계 */}
         <Route path="/handover/request" element={<PrivateRoute><HandoverRequestPage /></PrivateRoute>} />
