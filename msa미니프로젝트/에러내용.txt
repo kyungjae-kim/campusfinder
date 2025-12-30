@@ -1,4 +1,3 @@
 각페이지별 원래 헤더로 있던 부분들 삭제 (등록 같은 건 대쉬보드에서 들어간다거나 하는 방식으로 존재하고 있어 삭제해도 될듯하고, 디테일 페이지에서 수정삭제 같은건 원래 있던 헤더에서 빼서 다른 곳에 배치를 해야할듯. 새로운 헤더가 만들어졌고 원래 사용되던 헤더 코드들은 삭제해야하니)
 /admin/statistics 에서 activeUserCount : 0 foundItemCount : 0 handoverCompletedCount : 0 lostItemCount : 0 reportCount : 0 totalUserCount : 0 값들이 아직도 0으로 나오고있음. 그리고 foundItemCount, handoverCompletedCount, lostItemCount만 존재해도 되지않나 이제?
 category가 “전자기기/지갑/신분증”이면 SECURITY 검수 단계가 필수(VERIFIED_BY_SECURITY) <-원래 의도. 하지만 ACCESSORY도 검수가 되고있음. 원래 의도대로만 검수시키게 해야할듯.
-배송 관리에서는 courierStatus가 백엔드에서 나오지는 않고 있는데, dto에 새 필드값이 추가가 되거나, 아니면 현재 프로젝트에는 courier의 영향이 축소되어있으니 프론트 단에서만 1회용으로 변경이 된다라는 것만 보여줘도 될듯? 편한 방식으로 바꿔보자

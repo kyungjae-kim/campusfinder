@@ -21,7 +21,13 @@ export default function DeliveryManagePage() {
       setLoading(true);
       // COURIER 방식의 인계 목록
       const data = await handoverApi.getAll({ page: 0, size: 100 });
-      setDeliveries(data.filter((h: Handover) => h.method === 'COURIER'));
+        const courierOnly = data
+            .filter((h: Handover) => h.method === 'COURIER')
+            .map((h: Handover) => ({
+                ...h,
+                courierStatus: h.courierStatus ?? 'PENDING',
+            }));
+      setDeliveries(courierOnly);
     } catch (err) {
       console.error('Failed to fetch deliveries:', err);
     } finally {
@@ -30,13 +36,27 @@ export default function DeliveryManagePage() {
   };
 
   const handleUpdateStatus = async (id: number, status: string) => {
-    try {
+      //todo : 데모용 임시구현
+      setDeliveries(prev =>
+          prev.map(d =>
+              d.id === id
+                  ? {
+                      ...d,
+                      courierStatus: status,
+                      status: status === 'DELIVERED' ? 'COMPLETED' : d.status,
+                  }
+                  : d
+          )
+      );
+
+      alert('상태가 업데이트되었습니다.');
+      /*try {
       await handoverApi.updateCourierStatus(id, status);
       alert('상태가 업데이트되었습니다.');
       fetchDeliveries();
     } catch (err: any) {
       alert(err.response?.data?.message || '처리에 실패했습니다.');
-    }
+    }*/
   };
 
   const filteredDeliveries = deliveries.filter(d => {
