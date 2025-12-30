@@ -34,7 +34,7 @@ export default function LostItemDetailPage() {
 
   const handleDelete = async () => {
     if (!item) return;
-    
+
     if (!confirm('정말로 이 분실 신고를 삭제하시겠습니까?')) {
       return;
     }
@@ -52,7 +52,7 @@ export default function LostItemDetailPage() {
   };
 
   if (loading) return <Loading />;
-  
+
   if (error) {
     return (
       <div className="min-vh-100 bg-light d-flex align-items-center justify-content-center">
@@ -75,19 +75,20 @@ export default function LostItemDetailPage() {
       </div>
     );
   }
-  
+
   if (!item) return null;
 
   const userStr = localStorage.getItem('user');
   const currentUser = userStr ? JSON.parse(userStr) : null;
   const isOwner = currentUser && currentUser.id === item.userId;
+    const reward = item.reward;
 
   return (
     <div className="min-vh-100 bg-light">
       {/* 헤더 */}
       <nav className="navbar navbar-light bg-white shadow-sm mb-4">
         <div className="container-fluid">
-          <button 
+          <button
             className="btn btn-link text-decoration-none"
             onClick={() => navigate('/lost/list')}
           >
@@ -147,15 +148,17 @@ export default function LostItemDetailPage() {
                 </h2>
 
                 {/* 사례금 */}
-                {item.reward && (
-                  <div className="alert alert-warning d-flex align-items-center mb-4">
-                    <i className="bi bi-cash-coin fs-3 me-3"></i>
-                    <div>
-                      <div className="small text-muted">사례금</div>
-                      <div className="fs-4 fw-bold">{formatMoney(item.reward)}</div>
-                    </div>
-                  </div>
-                )}
+                  {reward != null && reward > 0 && (
+                      <div className="alert alert-warning d-flex align-items-center mb-4">
+                          <i className="bi bi-cash-coin fs-3 me-3"></i>
+                          <div>
+                              <div className="small text-muted">사례금</div>
+                              <div className="fs-4 fw-bold">
+                                  {formatMoney(reward)}
+                              </div>
+                          </div>
+                      </div>
+                  )}
 
                 {/* 정보 그리드 */}
                 <div className="card bg-light border-0 mb-4">
@@ -271,7 +274,7 @@ export default function LostItemDetailPage() {
                 <div className="card-body">
                   <div className="row g-2">
                     <div className="col-12 col-md-4">
-                      <button 
+                      <button
                         className="btn btn-outline-primary w-100"
                         onClick={() => navigate('/handover/my-requests')}
                       >
@@ -280,7 +283,7 @@ export default function LostItemDetailPage() {
                       </button>
                     </div>
                     <div className="col-12 col-md-4">
-                      <button 
+                      <button
                         className="btn btn-outline-info w-100"
                         onClick={() => navigate('/notifications')}
                       >
@@ -289,7 +292,7 @@ export default function LostItemDetailPage() {
                       </button>
                     </div>
                     <div className="col-12 col-md-4">
-                      <button 
+                      <button
                         className="btn btn-outline-secondary w-100"
                         onClick={() => navigate('/lost/list')}
                       >

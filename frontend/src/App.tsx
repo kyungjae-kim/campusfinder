@@ -77,10 +77,10 @@ function App() {
         {/* 관리실 (OFFICE) */}
         <Route path="/office/queue" element={<RoleProtectedRoute allowedRoles={['OFFICE', 'ADMIN']}><OfficeQueuePage /></RoleProtectedRoute>} />
         <Route path="/office/storage" element={<RoleProtectedRoute allowedRoles={['OFFICE', 'ADMIN']}><StorageManagePage /></RoleProtectedRoute>} />
+          <Route path="/office/approval" element={<RoleProtectedRoute allowedRoles={['OFFICE', 'ADMIN']}><ApprovalManagePage /></RoleProtectedRoute>} />
 
-        {/* 보안 (SECURITY) */}
-        <Route path="/security/inspection" element={<RoleProtectedRoute allowedRoles={['SECURITY', 'ADMIN']}><SecurityInspectionPage /></RoleProtectedRoute>} />
-        <Route path="/security/approval" element={<RoleProtectedRoute allowedRoles={['SECURITY', 'ADMIN']}><ApprovalManagePage /></RoleProtectedRoute>} />
+          {/* 보안 (SECURITY) */}
+          <Route path="/security/inspection" element={<RoleProtectedRoute allowedRoles={['SECURITY', 'ADMIN']}><SecurityInspectionPage /></RoleProtectedRoute>} />
 
         {/* 관리자 (ADMIN) */}
         <Route path="/admin/reports" element={<RoleProtectedRoute allowedRoles={['ADMIN', 'OFFICE', 'SECURITY']}><ReportManagePage /></RoleProtectedRoute>} />

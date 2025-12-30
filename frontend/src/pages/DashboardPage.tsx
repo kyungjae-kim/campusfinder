@@ -213,7 +213,7 @@ export default function DashboardPage() {
                     <div className="d-grid">
                       <button
                         className="btn btn-warning"
-                        onClick={() => navigate('/security/approval')}
+                        onClick={() => navigate('/office/approval')}
                       >
                         <i className="bi bi-check-square me-2"></i>
                         승인 관리
