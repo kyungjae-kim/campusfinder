@@ -23,7 +23,7 @@ public class JwtTokenProvider {
         this.expiration = expiration;
     }
 
-    public String createToken(Long userId, String username, String nickname, UserRole role) {
+    public String createToken(Long userId, String username, String nickname, UserRole role, com.bit.docker.auth.model.UserStatus status) {
         Date now = new Date();
         Date expirationDate = new Date(now.getTime() + expiration);
 
@@ -32,12 +32,14 @@ public class JwtTokenProvider {
                 .claim("username", username)
                 .claim("nickname", nickname)
                 .claim("role", role.name())
+                .claim("status", status.name())
                 .setIssuedAt(now)
                 .setExpiration(expirationDate)
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
 
+    @SuppressWarnings("unused")
     public Claims parseClaims(String token) {
         return Jwts
                 .parserBuilder()

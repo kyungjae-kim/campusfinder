@@ -300,10 +300,10 @@ public class HandoverService {
         handover.setCompletedAt(LocalDateTime.now());
         
         // Lost 서비스 호출 - status를 CLOSED로 변경
-        updateLostItemStatus(handover.getLostId(), "CLOSED");
+        closeLostItem(handover.getLostId());
         
         // Found 서비스 호출 - status를 HANDED_OVER로 변경
-        updateFoundItemStatus(handover.getFoundId(), "HANDED_OVER");
+        markFoundItemAsHandedOver(handover.getFoundId());
         
         // Notification 서비스로 알림 전송
         sendNotification(
@@ -390,14 +390,17 @@ public class HandoverService {
     }
 
     // 기간별 완료 통계 (Admin에서 호출)
-    public long countCompletedByDateRange(LocalDateTime startDate, LocalDateTime endDate) {
+    public long countCompletedByDateRange(java.time.LocalDate startDate, java.time.LocalDate endDate) {
         if (startDate == null || endDate == null) {
             return handoverRepository.findAll().stream()
                 .filter(h -> h.getStatus() == HandoverStatus.COMPLETED)
                 .count();
         }
+        // LocalDate를 LocalDateTime으로 변환 (하루의 시작과 끝)
+        java.time.LocalDateTime startDateTime = startDate.atStartOfDay();
+        java.time.LocalDateTime endDateTime = endDate.plusDays(1).atStartOfDay();
         return handoverRepository.countByStatusAndCompletedAtBetween(
-            HandoverStatus.COMPLETED, startDate, endDate
+            HandoverStatus.COMPLETED, startDateTime, endDateTime
         );
     }
     
@@ -470,11 +473,11 @@ public class HandoverService {
     }
     
     // Lost 서비스 상태 업데이트 (인계 완료 시 CLOSED로 변경)
-    private void updateLostItemStatus(Long lostId, String status) {
+    private void closeLostItem(Long lostId) {
         try {
             String url = serviceUrlProperties.getLostService().getUrl() + "/api/lost/" + lostId + "/status";
             Map<String, String> request = new HashMap<>();
-            request.put("status", status);
+            request.put("status", "CLOSED");
             restTemplate.put(url, request);
         } catch (Exception e) {
             System.err.println("Lost 서비스 상태 업데이트 실패: " + e.getMessage());
@@ -482,11 +485,11 @@ public class HandoverService {
     }
     
     // Found 서비스 상태 업데이트 (인계 완료 시 HANDED_OVER로 변경)
-    private void updateFoundItemStatus(Long foundId, String status) {
+    private void markFoundItemAsHandedOver(Long foundId) {
         try {
             String url = serviceUrlProperties.getFoundService().getUrl() + "/api/found/" + foundId + "/status";
             Map<String, String> request = new HashMap<>();
-            request.put("status", status);
+            request.put("status", "HANDED_OVER");
             restTemplate.put(url, request);
         } catch (Exception e) {
             System.err.println("Found 서비스 상태 업데이트 실패: " + e.getMessage());

@@ -21,8 +21,14 @@ public class MessageController {
     @PostMapping
     public ResponseEntity<MessageResponse> sendMessage(
         @RequestHeader("X-User-Id") Long userId,
+        @RequestHeader("X-User-Status") String userStatus,
         @RequestBody MessageSendRequest request
     ) {
+        // 정지된 사용자는 메시지 전송 불가 (A3)
+        if ("BLOCKED".equals(userStatus)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(null);
+        }
+
         MessageResponse response = messageService.sendMessage(userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }

@@ -22,10 +22,22 @@ public class HandoverController {
     
     // 인계 요청 생성 (분실자)
     @PostMapping
-    public ResponseEntity<HandoverResponse> createHandover(
+    public ResponseEntity<?> createHandover(
         @RequestHeader("X-User-Id") Long userId,
+        @RequestHeader("X-User-Role") String role,
+        @RequestHeader("X-User-Status") String userStatus,
         @RequestBody HandoverCreateRequest request
     ) {
+        // COURIER는 인계 요청 생성 불가 (⑤)
+        if ("COURIER".equals(role)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("COURIER는 인계 요청을 생성할 수 없습니다.");
+        }
+        
+        // 정지된 사용자는 인계 요청 불가 (A3)
+        if ("BLOCKED".equals(userStatus)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("정지된 사용자는 인계 요청을 생성할 수 없습니다.");
+        }
+        
         HandoverResponse response = handoverService.createHandover(userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -148,8 +160,8 @@ public class HandoverController {
     // 통계 (Admin에서 호출)
     @GetMapping("/count")
     public ResponseEntity<Map<String, Long>> getCount(
-        @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
-        @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate
+        @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate startDate,
+        @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate endDate
     ) {
         long count = handoverService.countCompletedByDateRange(startDate, endDate);
         return ResponseEntity.ok(Map.of("count", count));

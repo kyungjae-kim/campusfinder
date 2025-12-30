@@ -79,6 +79,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         String username = claims.get("username", String.class);
         String nickname = claims.get("nickname", String.class);
         String role = claims.get("role", String.class);
+        String status = claims.get("status", String.class);
 
         // GW에서 각각의 스프링부트로 보낼 요청 준비
         ServerHttpRequest mutated =
@@ -89,6 +90,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                         .header("X-Username", username)
                         .header("X-Nickname", nickname)
                         .header("X-User-Role", role)
+                        .header("X-User-Status", status)
                         .build();
 
         ServerWebExchange mutatedExchange

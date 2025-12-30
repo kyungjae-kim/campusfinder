@@ -66,17 +66,16 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("아이디 또는 비밀번호가 틀렸습니다");
         }
 
-        // 3. 정지 확인 (A3. 정지된 사용자 체크)
-        if (user.getStatus() == UserStatus.BLOCKED) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("정지된 사용자입니다");
-        }
+        // 3. 정지된 사용자도 로그인은 허용 (글 등록/인계 요청/메시지는 각 서비스에서 차단)
+        // 상태를 토큰에 포함하여 각 서비스에서 체크할 수 있도록 함
 
-        // 4. 토큰 생성 (role 포함!)
+        // 4. 토큰 생성 (role, status 포함!)
         String token = jwtTokenProvider.createToken(
             user.getId(),
             user.getUsername(),
             user.getNickname(),
-            user.getRole()
+            user.getRole(),
+            user.getStatus()
         );
 
         // 5. 응답
@@ -86,6 +85,7 @@ public class AuthController {
         response.setUsername(user.getUsername());
         response.setNickname(user.getNickname());
         response.setRole(user.getRole());
+        response.setStatus(user.getStatus()); // 프론트엔드에서 상태 확인 가능
 
         return ResponseEntity.ok(response);
     }

@@ -23,8 +23,14 @@ public class LostItemController {
     @PostMapping
     public ResponseEntity<LostItemResponse> createLostItem(
         @RequestHeader("X-User-Id") Long userId,
+        @RequestHeader("X-User-Status") String userStatus,
         @RequestBody LostItemCreateRequest request
     ) {
+        // 정지된 사용자는 글 등록 불가 (A3)
+        if ("BLOCKED".equals(userStatus)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(null);
+        }
+        
         LostItemResponse response = lostItemService.createLostItem(userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -57,9 +63,17 @@ public class LostItemController {
     public ResponseEntity<LostItemResponse> updateLostItem(
         @PathVariable Long id,
         @RequestHeader("X-User-Id") Long userId,
+        @RequestHeader("X-User-Role") String role,
+        @RequestHeader("X-User-Status") String userStatus,
         @RequestBody LostItemUpdateRequest request
     ) {
-        LostItemResponse response = lostItemService.updateLostItem(id, userId, request);
+        // 정지된 사용자는 수정 불가 (A3)
+        if ("BLOCKED".equals(userStatus)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(null);
+        }
+        
+        // ADMIN은 모든 글 수정 가능, 일반 사용자는 본인 글만 수정 가능
+        LostItemResponse response = lostItemService.updateLostItem(id, userId, role, request);
         return ResponseEntity.ok(response);
     }
     
@@ -67,9 +81,17 @@ public class LostItemController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteLostItem(
         @PathVariable Long id,
-        @RequestHeader("X-User-Id") Long userId
+        @RequestHeader("X-User-Id") Long userId,
+        @RequestHeader("X-User-Role") String role,
+        @RequestHeader("X-User-Status") String userStatus
     ) {
-        lostItemService.deleteLostItem(id, userId);
+        // 정지된 사용자는 삭제 불가 (A3)
+        if ("BLOCKED".equals(userStatus)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        
+        // ADMIN은 모든 글 삭제 가능, 일반 사용자는 본인 글만 삭제 가능
+        lostItemService.deleteLostItem(id, userId, role);
         return ResponseEntity.noContent().build();
     }
     
@@ -88,8 +110,8 @@ public class LostItemController {
     // 통계 (Admin에서 호출)
     @GetMapping("/count")
     public ResponseEntity<java.util.Map<String, Long>> getCount(
-        @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.LocalDateTime startDate,
-        @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.LocalDateTime endDate
+        @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate startDate,
+        @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate endDate
     ) {
         long count = lostItemService.countByDateRange(startDate, endDate);
         return ResponseEntity.ok(java.util.Map.of("count", count));

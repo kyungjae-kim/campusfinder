@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { lostApi } from '@/api/lost.api';
 import { foundApi } from '@/api/found.api';
@@ -17,20 +17,15 @@ export default function ProfilePage() {
   });
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadProfile();
-    loadStats();
-  }, []);
-
-  const loadProfile = () => {
+  const loadProfile = useCallback(() => {
     const userStr = localStorage.getItem('user');
     if (userStr) {
       setUser(JSON.parse(userStr));
     }
     setLoading(false);
-  };
+  }, []);
 
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     try {
       const [lost, found, requests, responses] = await Promise.all([
         lostApi.getMy(),
@@ -48,7 +43,12 @@ export default function ProfilePage() {
     } catch (err) {
       console.error('Failed to load stats:', err);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadProfile();
+    loadStats();
+  }, [loadProfile, loadStats]);
 
   const handleLogout = () => {
     if (!confirm('로그아웃 하시겠습니까?')) return;
@@ -238,6 +238,7 @@ export default function ProfilePage() {
           빠른 링크
         </h4>
         <div className="row g-3">
+          {/* 분실 신고 등록 - LOSER, ADMIN */}
           {(user.role === 'LOSER' || user.role === 'ADMIN') && (
             <div className="col-6 col-md-3">
               <QuickLink
@@ -248,6 +249,7 @@ export default function ProfilePage() {
             </div>
           )}
 
+          {/* 습득물 등록 - FINDER, OFFICE, ADMIN */}
           {(user.role === 'FINDER' || user.role === 'OFFICE' || user.role === 'ADMIN') && (
             <div className="col-6 col-md-3">
               <QuickLink
@@ -258,21 +260,115 @@ export default function ProfilePage() {
             </div>
           )}
 
-          <div className="col-6 col-md-3">
-            <QuickLink
-              title="내 인계 목록"
-              icon="bi-list-ul"
-              onClick={() => navigate('/handover/my-requests')}
-            />
-          </div>
+          {/* 내 인계 목록 - LOSER, FINDER */}
+          {(user.role === 'LOSER' || user.role === 'FINDER') && (
+            <div className="col-6 col-md-3">
+              <QuickLink
+                title="내 인계 목록"
+                icon="bi-list-ul"
+                onClick={() => navigate('/handover/my-requests')}
+              />
+            </div>
+          )}
 
-          <div className="col-6 col-md-3">
-            <QuickLink
-              title="인계 수신함"
-              icon="bi-inbox"
-              onClick={() => navigate('/handover/inbox')}
-            />
-          </div>
+          {/* 인계 수신함 - FINDER */}
+          {user.role === 'FINDER' && (
+            <div className="col-6 col-md-3">
+              <QuickLink
+                title="인계 수신함"
+                icon="bi-inbox"
+                onClick={() => navigate('/handover/inbox')}
+              />
+            </div>
+          )}
+
+          {/* 관리실 대기열 - OFFICE, ADMIN */}
+          {(user.role === 'OFFICE' || user.role === 'ADMIN') && (
+            <div className="col-6 col-md-3">
+              <QuickLink
+                title="관리실 대기열"
+                icon="bi-hourglass-split"
+                onClick={() => navigate('/office/queue')}
+              />
+            </div>
+          )}
+
+          {/* 보관 관리 - OFFICE, ADMIN */}
+          {(user.role === 'OFFICE' || user.role === 'ADMIN') && (
+            <div className="col-6 col-md-3">
+              <QuickLink
+                title="보관 관리"
+                icon="bi-box-seam"
+                onClick={() => navigate('/office/storage')}
+              />
+            </div>
+          )}
+
+          {/* 보안 검수 - SECURITY, ADMIN */}
+          {(user.role === 'SECURITY' || user.role === 'ADMIN') && (
+            <div className="col-6 col-md-3">
+              <QuickLink
+                title="보안 검수"
+                icon="bi-shield-check"
+                onClick={() => navigate('/security/inspection')}
+              />
+            </div>
+          )}
+
+          {/* 승인 관리 - SECURITY, ADMIN */}
+          {(user.role === 'SECURITY' || user.role === 'ADMIN') && (
+            <div className="col-6 col-md-3">
+              <QuickLink
+                title="승인 관리"
+                icon="bi-check-square"
+                onClick={() => navigate('/security/approval')}
+              />
+            </div>
+          )}
+
+          {/* 신고 관리 - ADMIN, OFFICE, SECURITY */}
+          {(user.role === 'ADMIN' || user.role === 'OFFICE' || user.role === 'SECURITY') && (
+            <div className="col-6 col-md-3">
+              <QuickLink
+                title="신고 관리"
+                icon="bi-flag"
+                onClick={() => navigate('/admin/reports')}
+              />
+            </div>
+          )}
+
+          {/* 사용자 관리 - ADMIN */}
+          {user.role === 'ADMIN' && (
+            <div className="col-6 col-md-3">
+              <QuickLink
+                title="사용자 관리"
+                icon="bi-people"
+                onClick={() => navigate('/admin/users')}
+              />
+            </div>
+          )}
+
+          {/* 운영 통계 - ADMIN */}
+          {user.role === 'ADMIN' && (
+            <div className="col-6 col-md-3">
+              <QuickLink
+                title="운영 통계"
+                icon="bi-bar-chart"
+                onClick={() => navigate('/admin/statistics')}
+              />
+            </div>
+          )}
+
+          {/* 배송 관리 - COURIER, ADMIN */}
+          {(user.role === 'COURIER' || user.role === 'ADMIN') && (
+            <div className="col-6 col-md-3">
+              <QuickLink
+                title="배송 관리"
+                icon="bi-truck"
+                onClick={() => navigate('/courier/delivery')}
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>

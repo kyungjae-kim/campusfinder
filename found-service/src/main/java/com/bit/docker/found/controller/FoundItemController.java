@@ -24,8 +24,14 @@ public class FoundItemController {
     @PostMapping
     public ResponseEntity<FoundItemResponse> createFoundItem(
         @RequestHeader("X-User-Id") Long userId,
+        @RequestHeader("X-User-Status") String userStatus,
         @RequestBody FoundItemCreateRequest request
     ) {
+        // 정지된 사용자는 글 등록 불가 (A3)
+        if ("BLOCKED".equals(userStatus)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(null);
+        }
+        
         FoundItemResponse response = foundItemService.createFoundItem(userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -58,9 +64,17 @@ public class FoundItemController {
     public ResponseEntity<FoundItemResponse> updateFoundItem(
         @PathVariable Long id,
         @RequestHeader("X-User-Id") Long userId,
+        @RequestHeader("X-User-Role") String role,
+        @RequestHeader("X-User-Status") String userStatus,
         @RequestBody FoundItemUpdateRequest request
     ) {
-        FoundItemResponse response = foundItemService.updateFoundItem(id, userId, request);
+        // 정지된 사용자는 수정 불가 (A3)
+        if ("BLOCKED".equals(userStatus)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(null);
+        }
+        
+        // ADMIN은 모든 글 수정 가능, 일반 사용자는 본인 글만 수정 가능
+        FoundItemResponse response = foundItemService.updateFoundItem(id, userId, role, request);
         return ResponseEntity.ok(response);
     }
     
@@ -68,9 +82,17 @@ public class FoundItemController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteFoundItem(
         @PathVariable Long id,
-        @RequestHeader("X-User-Id") Long userId
+        @RequestHeader("X-User-Id") Long userId,
+        @RequestHeader("X-User-Role") String role,
+        @RequestHeader("X-User-Status") String userStatus
     ) {
-        foundItemService.deleteFoundItem(id, userId);
+        // 정지된 사용자는 삭제 불가 (A3)
+        if ("BLOCKED".equals(userStatus)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        
+        // ADMIN은 모든 글 삭제 가능, 일반 사용자는 본인 글만 삭제 가능
+        foundItemService.deleteFoundItem(id, userId, role);
         return ResponseEntity.noContent().build();
     }
     
@@ -100,8 +122,8 @@ public class FoundItemController {
     // 통계 (Admin에서 호출)
     @GetMapping("/count")
     public ResponseEntity<Map<String, Long>> getCount(
-        @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.LocalDateTime startDate,
-        @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.LocalDateTime endDate
+        @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate startDate,
+        @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate endDate
     ) {
         long count = foundItemService.countByDateRange(startDate, endDate);
         return ResponseEntity.ok(Map.of("count", count));

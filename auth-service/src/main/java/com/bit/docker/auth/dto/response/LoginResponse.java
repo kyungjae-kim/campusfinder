@@ -1,6 +1,7 @@
 package com.bit.docker.auth.dto.response;
 
 import com.bit.docker.auth.model.UserRole;
+import com.bit.docker.auth.model.UserStatus;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -14,4 +15,5 @@ public class LoginResponse {
     private String username;
     private String nickname;
     private UserRole role;
+    private UserStatus status;
 }

@@ -60,12 +60,12 @@ public class LostItemService {
     
     // 분실 신고 수정
     @Transactional
-    public LostItemResponse updateLostItem(Long id, Long userId, LostItemUpdateRequest request) {
+    public LostItemResponse updateLostItem(Long id, Long userId, String role, LostItemUpdateRequest request) {
         LostItem item = lostItemRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("분실 신고를 찾을 수 없습니다."));
         
-        // 작성자 확인
-        if (!item.getUserId().equals(userId)) {
+        // 작성자 확인 (ADMIN은 모든 글 수정 가능)
+        if (!"ADMIN".equals(role) && !item.getUserId().equals(userId)) {
             throw new IllegalArgumentException("수정 권한이 없습니다.");
         }
         
@@ -81,12 +81,12 @@ public class LostItemService {
     
     // 분실 신고 삭제
     @Transactional
-    public void deleteLostItem(Long id, Long userId) {
+    public void deleteLostItem(Long id, Long userId, String role) {
         LostItem item = lostItemRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("분실 신고를 찾을 수 없습니다."));
         
-        // 작성자 확인
-        if (!item.getUserId().equals(userId)) {
+        // 작성자 확인 (ADMIN은 모든 글 삭제 가능)
+        if (!"ADMIN".equals(role) && !item.getUserId().equals(userId)) {
             throw new IllegalArgumentException("삭제 권한이 없습니다.");
         }
         
@@ -102,10 +102,13 @@ public class LostItemService {
     }
     
     // 기간별 통계 (Admin에서 호출)
-    public long countByDateRange(java.time.LocalDateTime startDate, java.time.LocalDateTime endDate) {
+    public long countByDateRange(java.time.LocalDate startDate, java.time.LocalDate endDate) {
         if (startDate == null || endDate == null) {
             return lostItemRepository.count();
         }
-        return lostItemRepository.countByCreatedAtBetween(startDate, endDate);
+        // LocalDate를 LocalDateTime으로 변환 (하루의 시작과 끝)
+        java.time.LocalDateTime startDateTime = startDate.atStartOfDay();
+        java.time.LocalDateTime endDateTime = endDate.plusDays(1).atStartOfDay();
+        return lostItemRepository.countByCreatedAtBetween(startDateTime, endDateTime);
     }
 }

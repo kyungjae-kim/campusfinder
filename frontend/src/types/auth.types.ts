@@ -23,6 +23,7 @@ export interface LoginResponse {
   username: string;
   nickname: string;
   role: UserRole;
+  status: UserStatus;
 }
 
 export interface RegisterRequest {
