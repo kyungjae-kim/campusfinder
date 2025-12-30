@@ -20,12 +20,28 @@ apiClient.interceptors.request.use((config) => {
 
 // 응답 인터셉터 - 에러 처리
 apiClient.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('auth-token');
-      window.location.href = '/login';
+    (response) => response,
+    (error) => {
+        const status = error.response?.status;
+        const message = error.response?.data?.message ?? '';
+
+        // 1️⃣ 401 중에서도 "세션/토큰 문제"만 전역 처리
+        if (status === 401) {
+            const isLoginRequest =
+                error.config?.url?.includes('/auth/login');
+
+            const isInvalidCredential =
+                message.includes('아이디') ||
+                message.includes('비밀번호');
+
+            if (!isLoginRequest && !isInvalidCredential) {
+                // 토큰 문제로 판단
+                localStorage.removeItem('auth-token');
+                window.location.href = '/login';
+            }
+        }
+
+        return Promise.reject(error);
     }
-    return Promise.reject(error);
-  }
 );
+

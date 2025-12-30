@@ -51,7 +51,7 @@ export const adminApi = {
   
   // 사용자 목록 조회
   getUsers: async (): Promise<any[]> => {
-    const response = await apiClient.get('/api/admin/users');
+    const response = await apiClient.get('/api/users');
     return response.data.content || response.data;
   },
 

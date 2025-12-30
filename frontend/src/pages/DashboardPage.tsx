@@ -1,36 +1,17 @@
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import type { LoginResponse } from '@/types/auth.types';
-import { notificationApi } from '@/api/notification.api';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
   const [user, setUser] = useState<LoginResponse | null>(null);
-  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     const userStr = localStorage.getItem('user');
     if (userStr) {
       setUser(JSON.parse(userStr));
     }
-    
-    fetchUnreadCount();
   }, []);
-
-  const fetchUnreadCount = async () => {
-    try {
-      const count = await notificationApi.getUnreadCount();
-      setUnreadCount(count);
-    } catch (err) {
-      console.error('Failed to fetch unread count:', err);
-    }
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('auth-token');
-    localStorage.removeItem('user');
-    navigate('/login');
-  };
 
   if (!user) {
     return (
@@ -44,67 +25,6 @@ export default function DashboardPage() {
 
   return (
     <div className="min-vh-100 bg-light">
-      {/* 헤더 */}
-      <nav className="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
-        <div className="container-fluid">
-          <span className="navbar-brand mb-0 h1">
-            <i className="bi bi-search me-2"></i>
-            캠퍼스 분실물 플랫폼
-          </span>
-
-          <div className="d-flex align-items-center gap-2">
-            {/* 알림 아이콘 */}
-            <button
-              className="btn btn-light position-relative"
-              onClick={() => navigate('/notifications')}
-              title="알림함"
-            >
-              <i className="bi bi-bell fs-5"></i>
-              {unreadCount > 0 && (
-                <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                  {unreadCount > 99 ? '99+' : unreadCount}
-                </span>
-              )}
-            </button>
-
-            {/* 사용자 정보 */}
-            <div className="dropdown">
-              <button
-                className="btn btn-light d-flex align-items-center gap-2"
-                type="button"
-                data-bs-toggle="dropdown"
-              >
-                <div className={`rounded-circle d-flex align-items-center justify-content-center text-white fw-bold badge-${user.role.toLowerCase()}`}
-                     style={{ width: '32px', height: '32px' }}>
-                  {user.nickname.charAt(0).toUpperCase()}
-                </div>
-                <div className="text-start d-none d-md-block">
-                  <div className="fw-bold text-truncate" style={{ maxWidth: '150px' }}>
-                    {user.nickname}
-                  </div>
-                  <div className="small text-muted">
-                    {getRoleLabel(user.role)}
-                  </div>
-                </div>
-              </button>
-              <ul className="dropdown-menu dropdown-menu-end">
-                <li>
-                  <button className="dropdown-item" onClick={() => navigate('/profile')}>
-                    <i className="bi bi-person me-2"></i>프로필
-                  </button>
-                </li>
-                <li><hr className="dropdown-divider" /></li>
-                <li>
-                  <button className="dropdown-item text-danger" onClick={handleLogout}>
-                    <i className="bi bi-box-arrow-right me-2"></i>로그아웃
-                  </button>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </nav>
-
       {/* 메인 콘텐츠 */}
       <div className="container py-4">
         <div className="row g-4">
@@ -364,17 +284,4 @@ export default function DashboardPage() {
       </div>
     </div>
   );
-}
-
-// 역할 레이블
-function getRoleLabel(role: string): string {
-  const labels: Record<string, string> = {
-    LOSER: '분실자',
-    FINDER: '습득자',
-    OFFICE: '관리실',
-    SECURITY: '보안',
-    ADMIN: '관리자',
-    COURIER: '배송',
-  };
-  return labels[role] || role;
 }

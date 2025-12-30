@@ -3,13 +3,15 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { handoverApi } from '@/api/handover.api';
 import { lostApi } from '@/api/lost.api';
 import { foundApi } from '@/api/found.api';
+import { userApi } from '@/api/user.api';
 import type { Handover } from '@/types/handover.types';
 import type { LostItem } from '@/types/lost.types';
 import type { FoundItem } from '@/types/found.types';
+import type { User } from '@/types/auth.types';
 import Loading from '@/components/common/Loading';
 import StatusBadge from '@/components/common/StatusBadge';
 import ChatBox from '@/components/features/ChatBox';
-import { formatDateTime } from '@/utils/formatters';
+import { formatDateTime, maskPhone, maskEmail, maskName } from '@/utils/formatters';
 
 export default function HandoverDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -18,6 +20,8 @@ export default function HandoverDetailPage() {
   const [handover, setHandover] = useState<Handover | null>(null);
   const [lostItem, setLostItem] = useState<LostItem | null>(null);
   const [foundItem, setFoundItem] = useState<FoundItem | null>(null);
+  const [requester, setRequester] = useState<User | null>(null);
+  const [responder, setResponder] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState('');
@@ -50,12 +54,16 @@ export default function HandoverDetailPage() {
       const handoverData = await handoverApi.getById(handoverId);
       setHandover(handoverData);
 
-      const [lost, found] = await Promise.all([
+      const [lost, found, requesterUser, responderUser] = await Promise.all([
         lostApi.getById(handoverData.lostId),
         foundApi.getById(handoverData.foundId),
+        userApi.getById(handoverData.requesterId).catch(() => null),
+        userApi.getById(handoverData.responderId).catch(() => null),
       ]);
       setLostItem(lost);
       setFoundItem(found);
+      setRequester(requesterUser);
+      setResponder(responderUser);
     } catch (err: any) {
       setError(err.response?.data?.message || '정보를 불러오는데 실패했습니다.');
     } finally {
@@ -204,13 +212,6 @@ export default function HandoverDetailPage() {
 
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
-      {/* 헤더 */}
-      <div style={{ marginBottom: '20px' }}>
-        <button onClick={() => navigate(-1)}>
-          ← 돌아가기
-        </button>
-      </div>
-
       <h1 style={{ marginBottom: '10px' }}>인계 상세</h1>
       <div style={{ marginBottom: '30px' }}>
         <StatusBadge status={handover.status} />
@@ -313,6 +314,8 @@ export default function HandoverDetailPage() {
       {/* 계속... */}
       <HandoverActions
         handover={handover}
+        requester={requester}
+        responder={responder}
         isRequester={isRequester}
         isResponder={isResponder}
         processing={processing}
@@ -337,10 +340,14 @@ export default function HandoverDetailPage() {
         handleCancel={handleCancel}
       />
 
-      {/* 채팅 - LOSER, FINDER, OFFICE만 참여 가능 */}
-      {currentUser && ['LOSER', 'FINDER', 'OFFICE', 'ADMIN'].includes(currentUser.role) && (
+      {/* 채팅 - LOSER, FINDER, 참여 가능 */}
+      {currentUser && ['LOSER', 'FINDER'].includes(currentUser.role) && (
         <div style={{ marginTop: '30px' }}>
-          <ChatBox handoverId={handover.id} currentUserId={currentUser?.id || 0} />
+          <ChatBox 
+            handoverId={handover.id} 
+            currentUserId={currentUser?.id || 0}
+            handoverStatus={handover.status}
+          />
         </div>
       )}
     </div>
@@ -350,6 +357,8 @@ export default function HandoverDetailPage() {
 // 액션 버튼 컴포넌트 (분리)
 interface HandoverActionsProps {
   handover: Handover;
+  requester: User | null;
+  responder: User | null;
   isRequester: boolean;
   isResponder: boolean;
   processing: boolean;
@@ -377,6 +386,8 @@ interface HandoverActionsProps {
 function HandoverActions(props: HandoverActionsProps) {
   const {
     handover,
+    requester,
+    responder,
     isResponder,
     processing,
     showScheduleForm,
@@ -399,6 +410,9 @@ function HandoverActions(props: HandoverActionsProps) {
     setCancelReason,
     handleCancel,
   } = props;
+
+  // 연락처 공개 여부
+  const isContactDisclosed = handover.contactDisclosed || false;
 
   return (
     <>
@@ -455,6 +469,103 @@ function HandoverActions(props: HandoverActionsProps) {
               <div style={{ color: '#cc0000' }}>{handover.cancelReason}</div>
             </>
           )}
+        </div>
+
+        {/* 당사자 연락처 정보 */}
+        <div style={{ 
+          marginTop: '20px',
+          padding: '16px',
+          backgroundColor: isContactDisclosed ? '#e6f7ff' : '#fff4e6',
+          borderRadius: '8px',
+          border: `2px solid ${isContactDisclosed ? '#0066cc' : '#ff9900'}`,
+        }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            marginBottom: '12px',
+            gap: '8px',
+          }}>
+            <span style={{ fontSize: '20px' }}>
+              {isContactDisclosed ? '🔓' : '🔒'}
+            </span>
+            <h4 style={{ margin: 0 }}>
+              {isContactDisclosed ? '연락처 공개됨' : '연락처 비공개'}
+            </h4>
+          </div>
+
+          {!isContactDisclosed && (
+            <p style={{ 
+              margin: '0 0 12px 0', 
+              fontSize: '13px', 
+              color: '#666',
+            }}>
+              관리실 최종 승인 후 양측의 연락처가 공개됩니다.
+            </p>
+          )}
+
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: '1fr 1fr', 
+            gap: '16px',
+          }}>
+            {/* 분실자 (요청자) */}
+            <div>
+              <div style={{ 
+                fontWeight: 'bold', 
+                color: '#0066cc',
+                marginBottom: '8px',
+                fontSize: '14px',
+              }}>
+                👤 분실자 (요청자)
+              </div>
+              <div style={{ fontSize: '13px' }}>
+                <div style={{ marginBottom: '4px' }}>
+                  <strong>이름:</strong> {requester ? 
+                    (isContactDisclosed ? requester.nickname : maskName(requester.nickname))
+                    : '정보 없음'}
+                </div>
+                <div style={{ marginBottom: '4px' }}>
+                  <strong>전화:</strong> {requester ? 
+                    (isContactDisclosed ? requester.phone : maskPhone(requester.phone))
+                    : '정보 없음'}
+                </div>
+                <div>
+                  <strong>이메일:</strong> {requester ? 
+                    (isContactDisclosed ? requester.email : maskEmail(requester.email))
+                    : '정보 없음'}
+                </div>
+              </div>
+            </div>
+
+            {/* 습득자 (응답자) */}
+            <div>
+              <div style={{ 
+                fontWeight: 'bold', 
+                color: '#00cc66',
+                marginBottom: '8px',
+                fontSize: '14px',
+              }}>
+                👤 습득자 (응답자)
+              </div>
+              <div style={{ fontSize: '13px' }}>
+                <div style={{ marginBottom: '4px' }}>
+                  <strong>이름:</strong> {responder ? 
+                    (isContactDisclosed ? responder.nickname : maskName(responder.nickname)) 
+                    : '정보 없음'}
+                </div>
+                <div style={{ marginBottom: '4px' }}>
+                  <strong>전화:</strong> {responder ? 
+                    (isContactDisclosed ? responder.phone : maskPhone(responder.phone)) 
+                    : '정보 없음'}
+                </div>
+                <div>
+                  <strong>이메일:</strong> {responder ? 
+                    (isContactDisclosed ? responder.email : maskEmail(responder.email)) 
+                    : '정보 없음'}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

@@ -17,6 +17,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Service
@@ -129,7 +130,7 @@ public class AdminService {
     // ========== 운영 통계 ==========
 
     // 운영 통계 조회 (H4. 최소 3개 지표)
-    public StatisticsResponse getStatistics(LocalDateTime startDate, LocalDateTime endDate) {
+    public StatisticsResponse getStatistics(LocalDate startDate, LocalDate endDate) {
         StatisticsResponse stats = new StatisticsResponse();
 
         // Lost 서비스 호출 - 기간별 분실 신고 수

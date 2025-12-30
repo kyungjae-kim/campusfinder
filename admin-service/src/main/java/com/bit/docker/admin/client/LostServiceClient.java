@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Map;
 
@@ -12,7 +13,7 @@ import java.util.Map;
 public class LostServiceClient {
     private final WebClient lostServiceWebClient;
     
-    public long countByDateRange(LocalDateTime startDate, LocalDateTime endDate) {
+    public long countByDateRange(LocalDate startDate, LocalDate endDate) {
         try {
             Map<String, Long> response = lostServiceWebClient
                 .get()

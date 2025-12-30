@@ -55,6 +55,16 @@ export const maskName = (name: string): string => {
   return name[0] + '*'.repeat(name.length - 2) + name[name.length - 1];
 };
 
+// 이메일 마스킹
+export const maskEmail = (email: string): string => {
+  if (!email) return '';
+  const [localPart, domain] = email.split('@');
+  if (!domain) return email;
+  const visibleLength = Math.min(3, localPart.length);
+  const maskedLocal = localPart.slice(0, visibleLength) + '***';
+  return maskedLocal + '@' + domain;
+};
+
 // ISO 날짜를 input[type="datetime-local"] 형식으로 변환
 export const toDatetimeLocalString = (date: Date | string): string => {
   const d = typeof date === 'string' ? new Date(date) : date;

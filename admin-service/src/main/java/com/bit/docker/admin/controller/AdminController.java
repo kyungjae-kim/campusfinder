@@ -14,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Map;
 
@@ -147,12 +148,13 @@ public class AdminController {
     // 운영 통계 조회
     @GetMapping("/statistics")
     public ResponseEntity<StatisticsResponse> getStatistics(
-        @RequestParam(required = false) 
-        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) 
-        LocalDateTime startDate,
-        @RequestParam(required = false) 
-        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) 
-        LocalDateTime endDate,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate startDate,
+
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate endDate,
         @RequestHeader("X-User-Role") String role
     ) {
         // Role이 ADMIN인지 확인

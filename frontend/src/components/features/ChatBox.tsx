@@ -1,19 +1,26 @@
 import { useState, useEffect, useRef } from 'react';
 import { messageApi } from '@/api/message.api';
 import type { Message } from '@/types/message.types';
+import type { HandoverStatus } from '@/types/handover.types';
 import { formatDateTime } from '@/utils/formatters';
 
 interface ChatBoxProps {
   handoverId: number;
   currentUserId: number;
+  handoverStatus?: HandoverStatus;
 }
 
-export default function ChatBox({ handoverId, currentUserId }: ChatBoxProps) {
+export default function ChatBox({ handoverId, currentUserId, handoverStatus }: ChatBoxProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const isFirstLoad = useRef(true);
+  const prevMessagesLength = useRef(0);
+
+  // 인계 완료 여부 확인
+  const isHandoverCompleted = handoverStatus === 'COMPLETED' || handoverStatus === 'CANCELED';
 
   useEffect(() => {
     fetchMessages();
@@ -23,7 +30,17 @@ export default function ChatBox({ handoverId, currentUserId }: ChatBoxProps) {
   }, [handoverId]);
 
   useEffect(() => {
-    scrollToBottom();
+    // 초기 로드 시에만 스크롤하지 않음 (UX 개선)
+    // 새 메시지가 추가되었을 때만 스크롤
+    if (!isFirstLoad.current && messages.length > prevMessagesLength.current) {
+      scrollToBottom();
+    }
+    
+    if (isFirstLoad.current && messages.length > 0) {
+      isFirstLoad.current = false;
+    }
+    
+    prevMessagesLength.current = messages.length;
   }, [messages]);
 
   const scrollToBottom = () => {
@@ -49,7 +66,7 @@ export default function ChatBox({ handoverId, currentUserId }: ChatBoxProps) {
   };
 
   const handleSend = async () => {
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() || isHandoverCompleted) return;
 
     try {
       setSending(true);
@@ -180,44 +197,57 @@ export default function ChatBox({ handoverId, currentUserId }: ChatBoxProps) {
       </div>
 
       {/* 입력 영역 */}
-      <div style={{ 
-        padding: '16px', 
-        borderTop: '1px solid #ddd',
-        display: 'flex',
-        gap: '8px',
-      }}>
-        <textarea
-          value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
-          onKeyPress={handleKeyPress}
-          placeholder="메시지를 입력하세요 (Shift+Enter로 줄바꿈)"
-          rows={2}
-          style={{ 
-            flex: 1, 
-            padding: '10px', 
-            border: '1px solid #ddd',
-            borderRadius: '4px',
-            resize: 'none',
-            fontSize: '14px',
-          }}
-        />
-        <button
-          onClick={handleSend}
-          disabled={sending || !newMessage.trim()}
-          style={{
-            padding: '10px 20px',
-            backgroundColor: sending || !newMessage.trim() ? '#ccc' : '#0066cc',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: sending || !newMessage.trim() ? 'not-allowed' : 'pointer',
-            fontWeight: 'bold',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {sending ? '전송 중...' : '전송'}
-        </button>
-      </div>
+      {isHandoverCompleted ? (
+        <div style={{ 
+          padding: '16px', 
+          borderTop: '1px solid #ddd',
+          backgroundColor: '#f5f5f5',
+          textAlign: 'center',
+          color: '#666',
+          fontSize: '14px',
+        }}>
+          🔒 인계가 {handoverStatus === 'COMPLETED' ? '완료' : '취소'}되어 더 이상 메시지를 보낼 수 없습니다.
+        </div>
+      ) : (
+        <div style={{ 
+          padding: '16px', 
+          borderTop: '1px solid #ddd',
+          display: 'flex',
+          gap: '8px',
+        }}>
+          <textarea
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="메시지를 입력하세요 (Shift+Enter로 줄바꿈)"
+            rows={2}
+            style={{ 
+              flex: 1, 
+              padding: '10px', 
+              border: '1px solid #ddd',
+              borderRadius: '4px',
+              resize: 'none',
+              fontSize: '14px',
+            }}
+          />
+          <button
+            onClick={handleSend}
+            disabled={sending || !newMessage.trim()}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: sending || !newMessage.trim() ? '#ccc' : '#0066cc',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: sending || !newMessage.trim() ? 'not-allowed' : 'pointer',
+              fontWeight: 'bold',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {sending ? '전송 중...' : '전송'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

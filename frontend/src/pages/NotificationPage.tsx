@@ -114,17 +114,20 @@ export default function NotificationPage() {
 
   return (
     <div className="min-vh-100 bg-light">
-      {/* 헤더 */}
-      <nav className="navbar navbar-light bg-white shadow-sm mb-4">
-        <div className="container-fluid">
-          <button 
-            className="btn btn-link text-decoration-none"
-            onClick={() => navigate('/dashboard')}
-          >
-            <i className="bi bi-arrow-left me-2"></i>
-            대시보드로 돌아가기
-          </button>
-
+      <div className="container py-4">
+        {/* 타이틀 */}
+        <div className="mb-4 d-flex justify-content-between align-items-center">
+          <div>
+            <h2 className="fw-bold mb-2">
+            <i className="bi bi-bell me-2"></i>
+            알림
+            {unreadCount > 0 && (
+              <span className="badge bg-danger ms-2">{unreadCount}</span>
+            )}
+          </h2>
+          <p className="text-muted mb-0">최신 알림을 확인하세요</p>
+          </div>
+          
           {unreadCount > 0 && (
             <button 
               className="btn btn-outline-primary"
@@ -134,20 +137,6 @@ export default function NotificationPage() {
               모두 읽음 처리
             </button>
           )}
-        </div>
-      </nav>
-
-      <div className="container py-4">
-        {/* 타이틀 */}
-        <div className="mb-4">
-          <h2 className="fw-bold mb-2">
-            <i className="bi bi-bell me-2"></i>
-            알림
-            {unreadCount > 0 && (
-              <span className="badge bg-danger ms-2">{unreadCount}</span>
-            )}
-          </h2>
-          <p className="text-muted mb-0">최신 알림을 확인하세요</p>
         </div>
 
         {/* 필터 */}

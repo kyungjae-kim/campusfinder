@@ -38,8 +38,8 @@ export default function ApprovalManagePage() {
         filtered.map(async (handover) => {
           try {
             const [lostItem, foundItem] = await Promise.all([
-              lostApi.getById(handover.lostId).catch(() => null),
-              foundApi.getById(handover.foundId).catch(() => null),
+              lostApi.getById(handover.lostId).catch(() => undefined),
+              foundApi.getById(handover.foundId).catch(() => undefined),
             ]);
             return {
               ...handover,
