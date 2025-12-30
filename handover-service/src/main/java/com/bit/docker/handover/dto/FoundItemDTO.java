@@ -20,4 +20,5 @@ public class FoundItemDTO {
     private String storageType;
     private String storageLocation;
     private String status;
+    private Boolean requiresSecurityCheck;  // SECURITY 검수 필요 여부
 }

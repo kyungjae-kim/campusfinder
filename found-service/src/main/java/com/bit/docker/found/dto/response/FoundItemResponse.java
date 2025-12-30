@@ -26,7 +26,8 @@ public class FoundItemResponse {
     private FoundStatus status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    
+    private Boolean requiresSecurityCheck;  // SECURITY 검수 필요 여부
+
     public static FoundItemResponse from(FoundItem item) {
         return new FoundItemResponse(
             item.getId(),
@@ -40,7 +41,8 @@ public class FoundItemResponse {
             item.getStorageLocation(),
             item.getStatus(),
             item.getCreatedAt(),
-            item.getUpdatedAt()
+            item.getUpdatedAt(),
+            item.getCategory().requiresSecurityCheck()  // 카테고리별 검수 필요 여부
         );
     }
 }

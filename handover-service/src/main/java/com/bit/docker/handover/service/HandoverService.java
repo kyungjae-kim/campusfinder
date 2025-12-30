@@ -28,9 +28,6 @@ public class HandoverService {
     private final HandoverRepository handoverRepository;
     private final RestTemplate restTemplate;
     private final ServiceUrlProperties serviceUrlProperties;
-
-    // 보안 검수가 필요한 카테고리
-    private static final List<String> SECURITY_CHECK_CATEGORIES = List.of("ELECTRONICS", "WALLET", "ID_CARD");
     
     // 인계 요청 생성 (E1. 분실자가 후보 습득물에 대해 인계 요청)
     @Transactional
@@ -110,7 +107,7 @@ public class HandoverService {
         
         // 카테고리 확인 후 SECURITY 검수 필요 시 알림 전송
         FoundItemDTO foundItem = getFoundItemById(handover.getFoundId());
-        if (foundItem != null && SECURITY_CHECK_CATEGORIES.contains(foundItem.getCategory())) {
+        if (foundItem != null && foundItem.getRequiresSecurityCheck() != null && foundItem.getRequiresSecurityCheck()) {
             // SECURITY 역할을 가진 모든 사용자에게 알림 (User 서비스 호출 필요)
             sendSecurityCheckNotification(handoverId, foundItem.getCategory());
         }
@@ -188,7 +185,7 @@ public class HandoverService {
         
         // Found 서비스에서 category 조회하여 검수 필요 여부 확인
         FoundItemDTO foundItem = getFoundItemById(handover.getFoundId());
-        if (foundItem != null && !SECURITY_CHECK_CATEGORIES.contains(foundItem.getCategory())) {
+        if (foundItem != null && (foundItem.getRequiresSecurityCheck() == null || !foundItem.getRequiresSecurityCheck())) {
             throw new IllegalArgumentException("이 카테고리는 보안 검수가 필요하지 않습니다.");
         }
         

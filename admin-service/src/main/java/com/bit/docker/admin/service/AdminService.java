@@ -134,20 +134,13 @@ public class AdminService {
         StatisticsResponse stats = new StatisticsResponse();
 
         // Lost 서비스 호출 - 기간별 분실 신고 수
-        stats.setLostItemCount(lostServiceClient.countByDateRange(startDate, endDate));
+        stats.setLostCount(lostServiceClient.countByDateRange(startDate, endDate));
 
         // Found 서비스 호출 - 기간별 습득물 등록 수
-        stats.setFoundItemCount(foundServiceClient.countByDateRange(startDate, endDate));
+        stats.setFoundCount(foundServiceClient.countByDateRange(startDate, endDate));
 
         // Handover 서비스 호출 - 인계 완료 수
-        stats.setHandoverCompletedCount(handoverServiceClient.countCompleted(startDate, endDate));
-
-        // 사용자 통계는 간단히 0으로 설정 (User 서비스에 통계 API 추가 필요)
-        stats.setTotalUserCount(0L);
-        stats.setActiveUserCount(0L);
-        
-        // 신고 수 (자체 DB)
-        stats.setReportCount((long) reportRepository.findAll().size());
+        stats.setHandoverCount(handoverServiceClient.countCompleted(startDate, endDate));
         
         return stats;
     }
