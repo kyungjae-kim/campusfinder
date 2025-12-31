@@ -43,19 +43,6 @@ export default function FoundItemCreatePage() {
 
   return (
     <div className="min-vh-100 bg-light">
-      {/* 헤더 */}
-      <nav className="navbar navbar-light bg-white shadow-sm mb-4">
-        <div className="container-fluid">
-          <button 
-            className="btn btn-link text-decoration-none"
-            onClick={() => navigate('/found/list')}
-          >
-            <i className="bi bi-arrow-left me-2"></i>
-            목록으로 돌아가기
-          </button>
-        </div>
-      </nav>
-
       <div className="container py-4">
         <div className="row justify-content-center">
           <div className="col-12 col-lg-8">

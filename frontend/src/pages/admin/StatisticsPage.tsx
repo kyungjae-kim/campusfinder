@@ -1,5 +1,4 @@
 import {useState, useEffect, useCallback} from 'react';
-import {useNavigate} from 'react-router-dom';
 import {adminApi} from '@/api/admin.api';
 import Loading from '@/components/common/Loading';
 
@@ -10,7 +9,6 @@ interface Statistics {
 }
 
 export default function StatisticsPage() {
-    const navigate = useNavigate();
     const [stats, setStats] = useState<Statistics | null>(null);
     const [loading, setLoading] = useState(true);
     const [period, setPeriod] = useState<'week' | 'month' | 'year'>('week');
@@ -49,7 +47,6 @@ export default function StatisticsPage() {
                 startDate,
                 endDate
             );
-            console.log(data);
             setStats(data);
         } catch (err) {
             console.error('Failed to fetch statistics:', err);
@@ -67,18 +64,6 @@ export default function StatisticsPage() {
 
     return (
         <div className="min-vh-100 bg-light">
-            {/* 헤더 */}
-            <nav className="navbar navbar-light bg-white shadow-sm mb-4">
-                <div className="container-fluid">
-                    <button
-                        className="btn btn-link text-decoration-none"
-                        onClick={() => navigate('/dashboard')}
-                    >
-                        <i className="bi bi-arrow-left me-2"></i>
-                        대시보드로 돌아가기
-                    </button>
-                </div>
-            </nav>
 
             <div className="container py-4">
                 {/* 타이틀 */}

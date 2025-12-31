@@ -14,3 +14,7 @@ spring:
     show-sql: true
 server:
   port: 8089
+logging:
+  level:
+    root: INFO
+    com.bit.docker.admin: DEBUG

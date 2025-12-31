@@ -69,18 +69,6 @@ export default function MyHandoverListPage() {
 
   return (
     <div className="min-vh-100 bg-light">
-      {/* 헤더 */}
-      <nav className="navbar navbar-light bg-white shadow-sm mb-4">
-        <div className="container-fluid">
-          <button 
-            className="btn btn-link text-decoration-none"
-            onClick={() => navigate('/dashboard')}
-          >
-            <i className="bi bi-arrow-left me-2"></i>
-            대시보드로 돌아가기
-          </button>
-        </div>
-      </nav>
 
       <div className="container py-4">
         {/* 타이틀 */}

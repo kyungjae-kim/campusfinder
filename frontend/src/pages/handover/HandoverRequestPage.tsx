@@ -94,11 +94,6 @@ export default function HandoverRequestPage() {
 
   return (
     <div style={{ maxWidth: '800px', margin: '0 auto', padding: '20px' }}>
-      <div style={{ marginBottom: '20px' }}>
-        <button onClick={() => navigate(-1)}>
-          ← 돌아가기
-        </button>
-      </div>
 
       <h1 style={{ marginBottom: '30px' }}>인계 요청하기</h1>
 

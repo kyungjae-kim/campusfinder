@@ -85,61 +85,50 @@ export default function LostItemDetailPage() {
 
   return (
     <div className="min-vh-100 bg-light">
-      {/* 헤더 */}
-      <nav className="navbar navbar-light bg-white shadow-sm mb-4">
-        <div className="container-fluid">
-          <button
-            className="btn btn-link text-decoration-none"
-            onClick={() => navigate('/lost/list')}
-          >
-            <i className="bi bi-arrow-left me-2"></i>
-            목록으로 돌아가기
-          </button>
-
-          {isOwner && item.status === 'OPEN' && (
-            <div className="d-flex gap-2">
-              <button
-                className="btn btn-outline-primary"
-                onClick={() => navigate(`/lost/${item.id}/edit`)}
-              >
-                <i className="bi bi-pencil me-2"></i>
-                수정
-              </button>
-              <button
-                className="btn btn-outline-danger"
-                onClick={handleDelete}
-                disabled={deleting}
-              >
-                {deleting ? (
-                  <>
-                    <span className="spinner-border spinner-border-sm me-2"></span>
-                    삭제 중...
-                  </>
-                ) : (
-                  <>
-                    <i className="bi bi-trash me-2"></i>
-                    삭제
-                  </>
-                )}
-              </button>
-            </div>
-          )}
-        </div>
-      </nav>
-
       <div className="container py-4">
         <div className="row justify-content-center">
           <div className="col-12 col-lg-10">
             {/* 메인 카드 */}
             <div className="card shadow-sm border-0 mb-4">
               <div className="card-body p-4">
-                {/* 카테고리 & 상태 */}
-                <div className="d-flex gap-2 mb-3">
-                  <span className="badge bg-light text-dark fs-6">
-                    <i className="bi bi-tag me-1"></i>
-                    {getCategoryLabel(item.category)}
-                  </span>
-                  <StatusBadge status={item.status} />
+                {/* 카테고리 & 상태 & 버튼들 */}
+                <div className="d-flex justify-content-between align-items-start mb-3">
+                  <div className="d-flex gap-2">
+                    <span className="badge bg-light text-dark fs-6">
+                      <i className="bi bi-tag me-1"></i>
+                      {getCategoryLabel(item.category)}
+                    </span>
+                    <StatusBadge status={item.status} />
+                  </div>
+
+                  {isOwner && item.status === 'OPEN' && (
+                    <div className="d-flex gap-2">
+                      <button
+                        className="btn btn-sm btn-outline-primary"
+                        onClick={() => navigate(`/lost/${item.id}/edit`)}
+                      >
+                        <i className="bi bi-pencil me-1"></i>
+                        수정
+                      </button>
+                      <button
+                        className="btn btn-sm btn-outline-danger"
+                        onClick={handleDelete}
+                        disabled={deleting}
+                      >
+                        {deleting ? (
+                          <>
+                            <span className="spinner-border spinner-border-sm me-1"></span>
+                            삭제 중...
+                          </>
+                        ) : (
+                          <>
+                            <i className="bi bi-trash me-1"></i>
+                            삭제
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* 제목 */}

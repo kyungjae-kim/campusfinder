@@ -53,17 +53,16 @@ export default function FoundItemListPage() {
 
   return (
     <div className="min-vh-100 bg-light">
-      {/* 헤더 */}
-      <nav className="navbar navbar-light bg-white shadow-sm mb-4">
-        <div className="container-fluid">
-          <button 
-            className="btn btn-link text-decoration-none"
-            onClick={() => navigate('/dashboard')}
-          >
-            <i className="bi bi-arrow-left me-2"></i>
-            대시보드로 돌아가기
-          </button>
-          
+      <div className="container py-4">
+        {/* 타이틀 */}
+        <div className="d-flex justify-content-between align-items-center mb-4">
+          <div>
+            <h2 className="fw-bold mb-2">
+              <i className="bi bi-check-circle text-success me-2"></i>
+              내 습득물
+            </h2>
+            <p className="text-muted mb-0">등록한 습득물을 관리하세요</p>
+          </div>
           <button 
             className="btn btn-success"
             onClick={() => navigate('/found/create')}
@@ -71,17 +70,6 @@ export default function FoundItemListPage() {
             <i className="bi bi-plus-circle me-2"></i>
             새 습득물 등록
           </button>
-        </div>
-      </nav>
-
-      <div className="container py-4">
-        {/* 타이틀 */}
-        <div className="mb-4">
-          <h2 className="fw-bold mb-2">
-            <i className="bi bi-check-circle text-success me-2"></i>
-            내 습득물
-          </h2>
-          <p className="text-muted mb-0">등록한 습득물을 관리하세요</p>
         </div>
 
         {/* 필터 탭 */}

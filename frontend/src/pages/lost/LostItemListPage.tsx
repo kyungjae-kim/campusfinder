@@ -43,35 +43,23 @@ export default function LostItemListPage() {
 
   return (
     <div className="min-vh-100 bg-light">
-      {/* 헤더 */}
-      <nav className="navbar navbar-light bg-white shadow-sm mb-4">
-        <div className="container-fluid">
-          <button 
-            className="btn btn-link text-decoration-none"
-            onClick={() => navigate('/dashboard')}
-          >
-            <i className="bi bi-arrow-left me-2"></i>
-            대시보드로 돌아가기
-          </button>
-          
-          <button 
+      <div className="container py-4">
+        {/* 타이틀 */}
+        <div className="d-flex justify-content-between align-items-center mb-4">
+          <div>
+            <h2 className="fw-bold mb-2">
+              <i className="bi bi-exclamation-circle text-primary me-2"></i>
+              내 분실 신고
+            </h2>
+            <p className="text-muted mb-0">등록한 분실물 신고를 관리하세요</p>
+          </div>
+          <button
             className="btn btn-primary"
             onClick={() => navigate('/lost/create')}
           >
             <i className="bi bi-plus-circle me-2"></i>
             새 분실 신고
           </button>
-        </div>
-      </nav>
-
-      <div className="container py-4">
-        {/* 타이틀 */}
-        <div className="mb-4">
-          <h2 className="fw-bold mb-2">
-            <i className="bi bi-exclamation-circle text-primary me-2"></i>
-            내 분실 신고
-          </h2>
-          <p className="text-muted mb-0">등록한 분실물 신고를 관리하세요</p>
         </div>
 
         {/* 필터 탭 */}
@@ -170,11 +158,10 @@ export default function LostItemListPage() {
                           </span>
                         </div>
                       </div>
-
                       <div className="col-12 col-md-4">
                         <div className="d-flex flex-column h-100 justify-content-between align-items-md-end mt-3 mt-md-0">
                           {/* 사례금 */}
-                          {item.reward && (
+                          {item.reward != null && item.reward > 0  && (
                             <div className="alert alert-warning py-2 px-3 mb-2">
                               <i className="bi bi-cash-coin me-1"></i>
                               <strong>{formatMoney(item.reward)}</strong>

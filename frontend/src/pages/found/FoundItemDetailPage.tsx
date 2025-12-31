@@ -83,9 +83,6 @@ export default function FoundItemDetailPage() {
     <div style={{ maxWidth: '800px', margin: '0 auto', padding: '20px' }}>
       {/* 헤더 */}
       <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <button onClick={() => navigate('/found/list')}>
-          ← 목록으로
-        </button>
         {isOwner && item.status === 'REGISTERED' && (
           <div style={{ display: 'flex', gap: '10px' }}>
             <button

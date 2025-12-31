@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { adminApi } from '@/api/admin.api';
 import Loading from '@/components/common/Loading';
 
@@ -14,7 +13,6 @@ interface User {
 }
 
 export default function UserManagePage() {
-  const navigate = useNavigate();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'ALL' | 'ACTIVE' | 'BLOCKED'>('ALL');
@@ -108,18 +106,6 @@ export default function UserManagePage() {
 
   return (
     <div className="min-vh-100 bg-light">
-      {/* 헤더 */}
-      <nav className="navbar navbar-light bg-white shadow-sm mb-4">
-        <div className="container-fluid">
-          <button 
-            className="btn btn-link text-decoration-none"
-            onClick={() => navigate('/dashboard')}
-          >
-            <i className="bi bi-arrow-left me-2"></i>
-            대시보드로 돌아가기
-          </button>
-        </div>
-      </nav>
 
       <div className="container py-4">
         {/* 타이틀 */}

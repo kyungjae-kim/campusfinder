@@ -15,7 +15,7 @@ export default function MatchingListPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    console.log('MatchingListPage mounted, lostId:', lostId);
+    // console.log('MatchingListPage mounted, lostId:', lostId);
     
     if (lostId) {
       fetchCandidates(Number(lostId));
@@ -72,18 +72,6 @@ export default function MatchingListPage() {
 
   return (
     <div className="min-vh-100 bg-light">
-      {/* 헤더 */}
-      <nav className="navbar navbar-light bg-white shadow-sm mb-4">
-        <div className="container-fluid">
-          <button 
-            className="btn btn-link text-decoration-none"
-            onClick={() => navigate(lostId ? `/lost/${lostId}` : '/dashboard')}
-          >
-            <i className="bi bi-arrow-left me-2"></i>
-            {lostId ? '분실물 상세로 돌아가기' : '대시보드로 돌아가기'}
-          </button>
-        </div>
-      </nav>
 
       <div className="container py-4">
         {/* 타이틀 */}

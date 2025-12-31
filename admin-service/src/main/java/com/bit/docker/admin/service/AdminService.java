@@ -12,6 +12,7 @@ import com.bit.docker.admin.model.Report;
 import com.bit.docker.admin.model.ReportStatus;
 import com.bit.docker.admin.repository.ReportRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -131,16 +133,27 @@ public class AdminService {
 
     // 운영 통계 조회 (H4. 최소 3개 지표)
     public StatisticsResponse getStatistics(LocalDate startDate, LocalDate endDate) {
+        log.info("=== 통계 조회 시작 - startDate: {}, endDate: {} ===", startDate, endDate);
+        
         StatisticsResponse stats = new StatisticsResponse();
 
         // Lost 서비스 호출 - 기간별 분실 신고 수
-        stats.setLostCount(lostServiceClient.countByDateRange(startDate, endDate));
+        long lostCount = lostServiceClient.countByDateRange(startDate, endDate);
+        log.info("Lost Count: {}", lostCount);
+        stats.setLostCount(lostCount);
 
         // Found 서비스 호출 - 기간별 습득물 등록 수
-        stats.setFoundCount(foundServiceClient.countByDateRange(startDate, endDate));
+        long foundCount = foundServiceClient.countByDateRange(startDate, endDate);
+        log.info("Found Count: {}", foundCount);
+        stats.setFoundCount(foundCount);
 
         // Handover 서비스 호출 - 인계 완료 수
-        stats.setHandoverCount(handoverServiceClient.countCompleted(startDate, endDate));
+        long handoverCount = handoverServiceClient.countCompleted(startDate, endDate);
+        log.info("Handover Count: {}", handoverCount);
+        stats.setHandoverCount(handoverCount);
+
+        log.info("=== 통계 조회 완료 - Total: {} ===", 
+            lostCount + foundCount + handoverCount);
         
         return stats;
     }
